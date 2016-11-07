@@ -32,52 +32,52 @@ Another note, the GPS is always spitting out it's data without the need to query
 
 //This should restart it to full factory default, clearing anything we have set
 void sf_gps_full_cold_start() {
-	char fullColdStartMessage[StartMessageLength] = "$PMTK104*37<CR><LF>";
-	sf_uart_write((u8 *)fullColdStartMessage, StartMessageLength);
+    char fullColdStartMessage[StartMessageLength] = "$PMTK104*37<CR><LF>";
+    sf_uart_write((u8 *)fullColdStartMessage, StartMessageLength);
 }
 
 void sf_gps_cold_start() {
-	char coldStartMessage[StartMessageLength] = "$PMTK103*30<CR><LF>";
-	sf_uart_write((u8 *)coldStartMessage, StartMessageLength);
+    char coldStartMessage[StartMessageLength] = "$PMTK103*30<CR><LF>";
+    sf_uart_write((u8 *)coldStartMessage, StartMessageLength);
 }
 
 void sf_gps_warm_start() {
-	char warmStartMessage[StartMessageLength] = "$PMTK102*31<CR><LF>";
-	sf_uart_write((u8 *)warmStartMessage, StartMessageLength);
+    char warmStartMessage[StartMessageLength] = "$PMTK102*31<CR><LF>";
+    sf_uart_write((u8 *)warmStartMessage, StartMessageLength);
 }
 
 void sf_gps_hot_start() {
-	char hotStartMessage[StartMessageLength] = "$PMTK101*32<CR><LF>";
-	sf_uart_write((u8 *)hotStartMessage, StartMessageLength);
+    char hotStartMessage[StartMessageLength] = "$PMTK101*32<CR><LF>";
+    sf_uart_write((u8 *)hotStartMessage, StartMessageLength);
 }
 
 
 
 void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
-	char baudRateBuf[baudByteLen];
-	char baudRateMessage[messagePreambleLength + baudByteLen + baudRateExtraCharactes];
-	char preamble[messagePreambleLength + 1];
-	char checkSumBuf[2];
-	
-	snprintf(baudRateBuf, "%d", baudRate);
-	sprintf(preamble, "$PMKT251,");
-	sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, baudRateBuf, checkSumBuf);
-	
-	sf_uart_write((u8 *)baudRateMessage, baudByteLen + messagePreambleLength + baudRateExtraCharactes);
+    char baudRateBuf[baudByteLen];
+    char baudRateMessage[messagePreambleLength + baudByteLen + baudRateExtraCharactes];
+    char preamble[messagePreambleLength + 1];
+    char checkSumBuf[2];
+    
+    snprintf(baudRateBuf, "%d", baudRate);
+    sprintf(preamble, "$PMKT251,");
+    sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, baudRateBuf, checkSumBuf);
+    
+    sf_uart_write((u8 *)baudRateMessage, baudByteLen + messagePreambleLength + baudRateExtraCharactes);
 }
 
 void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
-	char intervalBuf[intervalByteLength];
-	char preamble[messagePreambleLength + 1];
-	char intervalMessage[intervalByteLength + messagePreambleLength + ];
-	char checkSumBuf[2];
-	
-	sprintf(intervalBuf, "%d", interval);
-	sprintf(preamble, "$PMKT220,");
-	sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, intervalBuf, checkSumBuf);
-	
-	//This 12 comes from the comma, the *, the 2 bytes for the checksum, and 8 from <CR><LF>
-	sf_uart_write(intervalMessage, messagePreambleLength + intervalByteLength + 12);
+    char intervalBuf[intervalByteLength];
+    char preamble[messagePreambleLength + 1];
+    char intervalMessage[intervalByteLength + messagePreambleLength + ];
+    char checkSumBuf[2];
+    
+    sprintf(intervalBuf, "%d", interval);
+    sprintf(preamble, "$PMKT220,");
+    sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, intervalBuf, checkSumBuf);
+    
+    //This 12 comes from the comma, the *, the 2 bytes for the checksum, and 8 from <CR><LF>
+    sf_uart_write(intervalMessage, messagePreambleLength + intervalByteLength + 12);
 }
 
 //This will construct and send a message that sets each valid nmea sentence recieve rate based on 1 - 5 fixes
@@ -85,34 +85,34 @@ void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
 //nmea Rate example $PMTK314,1,1,1,1,1,5,0,0,0,0,0,0,0,0,0,0,0,0,0*2C<CR><LF> 
 
 void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
-	char nmeaRateMessage[nmeaRateMessageLenth];
+    char nmeaRateMessage[nmeaRateMessageLenth];
     char GLLBuf[2];
     char RMCBuf[2];
     char VTGBuf[2];
     char GSABuf[2];
     char GSVBuf[2];
-	char CRLFBuf[8] = "<CR><LF>";
-	char checkSumBuf[2];
-	char ReservedBuf[25];
-	char preamble[messagePreambleLength];
-	
-	GLLBuf[1] = ','; 
-	RMCBuf[1] = ','; 
-	VTGBuf[1] = ','; 
-	GSABuf[1] = ','; 
-	GSVBuf[1] = ','; 
-	
-	snprintf(GLLBuf, "%d", GLL);
-	snprintf(RMCBuf, "%d", RMC);
-	snprintf(VTGBuf, "%d", VTG);
-	snprintf(GSABuf, "%d", GSA);
-	snprintf(GSVBuf, "%d", GSV);
-		
-	snprintf(ReservedBuf, "0,0,0,0,0,0,0,0,0,0,0,0,0", 25);
-	snprintf(preamble, "$PMTK314,", messagePreambleLength + 1);
-	
-	snprintf(nmeaRateMessage, "%s%s%s%s%s%s%s%s%s", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, checkSumBuf, ReservedBuf, CRLFBuf);
-	sf_uart_write((u8 *)nmeaRateMessage, nmeaRateMessageLength);
+    char CRLFBuf[8] = "<CR><LF>";
+    char checkSumBuf[2];
+    char ReservedBuf[25];
+    char preamble[messagePreambleLength];
+    
+    GLLBuf[1] = ','; 
+    RMCBuf[1] = ','; 
+    VTGBuf[1] = ','; 
+    GSABuf[1] = ','; 
+    GSVBuf[1] = ','; 
+    
+    snprintf(GLLBuf, "%d", GLL);
+    snprintf(RMCBuf, "%d", RMC);
+    snprintf(VTGBuf, "%d", VTG);
+    snprintf(GSABuf, "%d", GSA);
+    snprintf(GSVBuf, "%d", GSV);
+        
+    snprintf(ReservedBuf, "0,0,0,0,0,0,0,0,0,0,0,0,0", 25);
+    snprintf(preamble, "$PMTK314,", messagePreambleLength + 1);
+    
+    snprintf(nmeaRateMessage, "%s%s%s%s%s%s%s%s%s", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, checkSumBuf, ReservedBuf, CRLFBuf);
+    sf_uart_write((u8 *)nmeaRateMessage, nmeaRateMessageLength);
 }
 
 

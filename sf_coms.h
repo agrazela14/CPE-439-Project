@@ -2,7 +2,6 @@
  * sf_coms.h
  *
  *  Created on: Nov 2, 2016
- * ( . Y . )
  */
 
 #ifndef SRC_SF_COMS_H_
