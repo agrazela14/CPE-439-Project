@@ -13,6 +13,7 @@
 
 #define IIC_CLK_FREQ 100000
 #define IMU_ADDR 0x28
+#define EEPROM_ADDR 0x50
 
 extern XScuGic xInterruptController;
 
