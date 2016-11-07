@@ -27,17 +27,35 @@ Another note, the GPS is always spitting out it's data without the need to query
 
 #define messagePreambleLength 8
 #define baudRateExtraCharactes 12
-#define coldStartMessageLength 19
+#define StartMessageLength 19
 #define nmeaRateMessageLength 57
 
 //This should restart it to full factory default, clearing anything we have set
 void sf_gps_full_cold_start() {
-	char coldStartMessage[coldStartMessageLength] = "$PMTK104*37<CR><LF>";
-	sf_uart_write((u8 *)coldStartMessage, coldStartMessageLength);
+	char fullColdStartMessage[StartMessageLength] = "$PMTK104*37<CR><LF>";
+	sf_uart_write((u8 *)fullColdStartMessage, StartMessageLength);
 }
+
+void sf_gps_cold_start() {
+	char coldStartMessage[StartMessageLength] = "$PMTK103*30<CR><LF>";
+	sf_uart_write((u8 *)coldStartMessage, StartMessageLength);
+}
+
+void sf_gps_warm_start() {
+	char warmStartMessage[StartMessageLength] = "$PMTK102*31<CR><LF>";
+	sf_uart_write((u8 *)warmStartMessage, StartMessageLength);
+}
+
+void sf_gps_hot_start() {
+	char hotStartMessage[StartMessageLength] = "$PMTK101*32<CR><LF>";
+	sf_uart_write((u8 *)hotStartMessage, StartMessageLength);
+}
+
+
+
 void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
 	char baudRateBuf[baudByteLen];
-	char baudRateMessage[messagePreambleLength + baudByteLen + baudRateExtraCharactes]
+	char baudRateMessage[messagePreambleLength + baudByteLen + baudRateExtraCharactes];
 	char preamble[messagePreambleLength + 1];
 	char checkSumBuf[2];
 	
@@ -51,7 +69,7 @@ void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
 void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
 	char intervalBuf[intervalByteLength];
 	char preamble[messagePreambleLength + 1];
-	char intervalMessage[intervalByteLength + messagePreambleLength + ]
+	char intervalMessage[intervalByteLength + messagePreambleLength + ];
 	char checkSumBuf[2];
 	
 	sprintf(intervalBuf, "%d", interval);
@@ -73,9 +91,9 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
     char VTGBuf[2];
     char GSABuf[2];
     char GSVBuf[2];
-	char CRLFBuf[8] = "<CR><LF>"
+	char CRLFBuf[8] = "<CR><LF>";
 	char checkSumBuf[2];
-	char ReservedBuf[25]
+	char ReservedBuf[25];
 	char preamble[messagePreambleLength];
 	
 	GLLBuf[1] = ','; 
