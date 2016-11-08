@@ -115,11 +115,19 @@ void sf_uart_init() {
     //Want to also put in interrupt mode later
 }
 
-void sf_uart_write(u8 *out, BaseType_t numBytes) {
-    XUartPs_Send(&xuart, out, numBytes);
+//self note: Semaphore Macros:
+// xSemaphoreTake(xSemaphore, xBlockTime) lowers it for a specified amount of time before going anyways (I think)
+// xSemaphoreGive(xSemaphore) Ups the semaphore
+
+u32 sf_uart_write(u8 *out, BaseType_t numBytes) {
+    u32 bytesSent;
+    xSemaphoreTake(uartSema, uartWriteBlockTime); 
+    bytesSent = XUartPs_Send(&xuart, out, numBytes);
+    return bytesSent;
 }
 
-void sf_uart_receive() {
-
-}
+u32 sf_uart_read(u8 *in, BaseType_t numBytes) {
+    u32 bytesRecv = XUartPs_Recv(&xuart, in, numBytes);
+    xSemaphoreGive(uartSema); 
+    return bytesRecv;
 }

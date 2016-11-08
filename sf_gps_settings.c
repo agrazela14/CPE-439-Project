@@ -32,22 +32,26 @@ Another note, the GPS is always spitting out it's data without the need to query
 
 //This should restart it to full factory default, clearing anything we have set
 void sf_gps_full_cold_start() {
-    char fullColdStartMessage[StartMessageLength] = "$PMTK104*37<CR><LF>";
+    char fullColdStartMessage[StartMessageLength];
+    sprintf(fullColdStartMessage, "$PMTK104*37\r\n");
     sf_uart_write((u8 *)fullColdStartMessage, StartMessageLength);
 }
 
 void sf_gps_cold_start() {
-    char coldStartMessage[StartMessageLength] = "$PMTK103*30<CR><LF>";
+    char coldStartMessage[StartMessageLength];
+    sprintf(coldStartMessage, "$PMTK103*30\r\n");
     sf_uart_write((u8 *)coldStartMessage, StartMessageLength);
 }
 
 void sf_gps_warm_start() {
-    char warmStartMessage[StartMessageLength] = "$PMTK102*31<CR><LF>";
+    char warmStartMessage[StartMessageLength];
+    sprintf(warmStartMessage, "$PMTK102*31\r\n");
     sf_uart_write((u8 *)warmStartMessage, StartMessageLength);
 }
 
 void sf_gps_hot_start() {
-    char *hotStartMessage = "$PMTK101*32<CR><LF>";
+    char hotStartMessage[StartMessageLength];
+    sprintf(hotStartMessage, "$PMTK101*32\r\n");
     sf_uart_write((u8 *)hotStartMessage, StartMessageLength);
 }
 
@@ -57,10 +61,15 @@ void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
     char baudRateBuf[baudByteLen];
     char baudRateMessage[messagePreambleLength + baudByteLen + baudRateExtraCharactes];
     char preamble[messagePreambleLength + 1];
-    char checkSumBuf[2];
+    char checksumBuf[checksumLength];
+    
+    sprintf(baudRateBuf, "%d\0", baudRate);
+    sprintf(preamble, "$PMKT251,\0");
+    //sprintf(intervalMessage, "%s%s*%s\r\n", preamble, baudRateBuf, checksumBuf);
 
-    snprintf(baudRateBuf, "%d", baudRate);
-    sprintf(preamble, "$PMKT251,");
+    sprintf(baudRateMessage, "%s%s*", preamble, baudRateBuf);
+    sf_gps_checksum_calc(checksumBuf, baudRateMessage);
+    sprintf(baudRateMessage, "%s\r\n", checksumBuf);
     //sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, baudRateBuf, checkSumBuf);
     
     sf_uart_write((u8 *)baudRateMessage, baudByteLen + messagePreambleLength + baudRateExtraCharactes);
@@ -76,8 +85,8 @@ void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
     sprintf(preamble, "$PMKT220,");
     //sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, intervalBuf, checkSumBuf);
     
-    //This 12 comes from the comma, the *, the 2 bytes for the checksum, and 8 from <CR><LF>
-    //sf_uart_write(intervalMessage, messagePreambleLength + intervalByteLength + 12);
+    //This 4 comes from the comma, the *, and 2 from <CR><LF>
+    sf_uart_write(intervalMessage, messagePreambleLength + intervalByteLength + checksumLength + 4);
 }
 
 //This will construct and send a message that sets each valid nmea sentence recieve rate based on 1 - 5 fixes
@@ -91,27 +100,50 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
     char VTGBuf[2];
     char GSABuf[2];
     char GSVBuf[2];
-    char CRLFBuf[8] = "<CR><LF>";
+    char CRLFBuf[2];
     char checkSumBuf[2];
     char ReservedBuf[25];
     char preamble[messagePreambleLength];
     
-    GLLBuf[1] = ',';
-    RMCBuf[1] = ',';
-    VTGBuf[1] = ',';
-    GSABuf[1] = ',';
-    GSVBuf[1] = ',';
-    
-    snprintf(GLLBuf, "%d", GLL);
-    snprintf(RMCBuf, "%d", RMC);
-    snprintf(VTGBuf, "%d", VTG);
-    snprintf(GSABuf, "%d", GSA);
-    snprintf(GSVBuf, "%d", GSV);
+    sprintf(CRLFBuf, "\r\n\0");
+    sprintf(GLLBuf, "%d", GLL);
+    sprintf(RMCBuf, "%d", RMC);
+    sprintf(VTGBuf, "%d", VTG);
+    sprintf(GSABuf, "%d", GSA);
+    sprintf(GSVBuf, "%d", GSV);
         
-    snprintf(ReservedBuf, "0,0,0,0,0,0,0,0,0,0,0,0,0", 25);
-    snprintf(preamble, "$PMTK314,", messagePreambleLength + 1);
+    sprintf(GLLBuf + 1, ",\0");
+    sprintf(RMCBuf + 1, ",\0");
+    sprintf(RMCBuf + 1, ",\0");
+    sprintf(VTGBuf + 1, ",\0");
+    sprintf(GSABuf + 1, ",\0");
+    sprintf(GSVBuf + 1, ",\0");
+
+    sprintf(ReservedBuf, "0,0,0,0,0,0,0,0,0,0,0,0,0\0");
+    sprintf(preamble, "$PMTK314,\0");
     
-    //snprintf(nmeaRateMessage, "%s%s%s%s%s%s%s%s%s", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, checkSumBuf, ReservedBuf, CRLFBuf);
-    //sf_uart_write((u8 *)nmeaRateMessage, nmeaRateMessageLength);
+    sprintf(nmeaRateMessage, "%s%s%s%s%s%s%s*", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, ReservedBuf);
+    sf_gps_checksum_calc(checksumBuf, nmeaRateMessage);
+
+    sprintf(nmeaRateMessage + (messagePreambleLength + 10 + nmeaRateReservedLength), "%s%s", checksumBuf, CRLFBuf); 
+
+    sf_uart_write((u8 *)nmeaRateMessage, nmeaRateMessageLength);
 }
 
+void sf_gps_checksum_calc(char *checksumBuf, char *messageString) {
+   char *next = messageString[2];
+   u16 checksum = messageString[1];
+   
+   while (*next != '*') {
+      checksum ^= next++;
+   }
+
+   sprintf(checksumBuf, "%*X\0", 2, checksum);
+}
+
+//In the case of an NMEA sentence, it will end with *<checksum>
+//the ack ends with *<checksum>\r\n
+void sf_gps_read(char *readBuf, u32 numBytes) {
+   sf_uart_read(readBuf, numBytes);
+    
+}
