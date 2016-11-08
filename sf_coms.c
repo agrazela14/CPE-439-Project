@@ -9,9 +9,11 @@
 #include "xuartps.h"
 #include "xscugic.h"
 #include "xiicps.h"
+#include "xsemaphr.h"
 #include "sf_coms.h"
 
 #define IIC_CLK_FREQ 100000
+#define uartWriteBlockTime 100000
 
 extern XScuGic xInterruptController;
 
@@ -20,6 +22,9 @@ static XUartPs xuart;
 
 /* IIC_1 instance */
 static XIicPs xiic;
+
+static xSemaphore uartSema;
+static xSemaphore iicSema;
 
 static int rec = 0;
 static int snd = 0;
