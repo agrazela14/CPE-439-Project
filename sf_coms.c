@@ -9,9 +9,11 @@
 #include "xuartps.h"
 #include "xscugic.h"
 #include "xiicps.h"
+#include "xsemaphr.h"
 #include "sf_coms.h"
 
 #define IIC_CLK_FREQ 100000
+#define uartWriteBlockTime 10000 
 
 extern XScuGic xInterruptController;
 
@@ -20,6 +22,9 @@ static XUartPs xuart;
 
 /* IIC_1 instance */
 static XIicPs xiic;
+
+static xSemaphore uartSema;
+static xSemaphore iicSema;
 
 static int rec = 0;
 static int snd = 0;
@@ -83,8 +88,19 @@ void sf_uart_init() {
     //Want to also put in interrupt mode later
 }
 
-void sf_uart_write(u8 *out, BaseType_t numBytes) {
+//self note: Semaphore Macros:
+// xSemaphoreTake(xSemaphore, xBlockTime) lowers it for a specified amount of time before going anyways (I think)
+// xSemaphoreGive(xSemaphore) Ups the semaphore
 
-    XUartPs_Send(&xuart, out, numBytes);
+u32 sf_uart_write(u8 *out, BaseType_t numBytes) {
+    u32 bytesSent;
+    xSemaphoreTake(uartSema, uartWriteBlockTime); 
+    bytesSent = XUartPs_Send(&xuart, out, numBytes);
+    return bytesSent;
+}
 
+u32 sf_uart_read(u8 *in, BaseType_t numBytes) {
+    u32 bytesRecv = XUartPs_Recv(&xuart, in, numBytes);
+    xSemaphoreGive(uartSema); 
+    return bytesRecv;
 }
