@@ -23,8 +23,8 @@ static XUartPs xuart;
 /* IIC_1 instance */
 static XIicPs xiic;
 
-static xSemaphore uartSema;
-static xSemaphore iicSema;
+static SemaphoreHandle_t uartSema;
+static SemaphoreHandle_t iicSema;
 
 static int rec = 0;
 static int snd = 0;
