@@ -8,6 +8,9 @@
 #define SRC_SF_COMS_H_
 #include "FreeRTOS.h"
 
+#define IMU_ADDR 0x28
+#define EEPROM_ADDR 0x50
+
 void sf_uart_init();
 
 void sf_iic_init();

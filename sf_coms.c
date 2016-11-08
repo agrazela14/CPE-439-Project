@@ -12,8 +12,6 @@
 #include "sf_coms.h"
 
 #define IIC_CLK_FREQ 100000
-#define IMU_ADDR 0x28
-#define EEPROM_ADDR 0x50
 
 extern XScuGic xInterruptController;
 
@@ -64,9 +62,9 @@ void sf_iic_init() {
     XIicPs_SetSClk(&xiic, IIC_CLK_FREQ);
 }
 
-void sf_iic_send(u8 *out, BaseType_t numBytes) {
+void sf_iic_send(u8 *out, BaseType_t numBytes, u16 slaveAddr) {
 
-    XIicPs_MasterSend(&xiic, out, numBytes, IMU_ADDR);
+    XIicPs_MasterSend(&xiic, out, numBytes, slaveAddr);
 
 }
 
