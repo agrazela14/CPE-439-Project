@@ -27,7 +27,8 @@
 //#define mainFREQUENCY_MS_1			( 420 / portTICK_PERIOD_MS )
 
 void sf_main(void) {
-	/*CODE*/
+	/* initialize instances of devices and their interrupt Handlers */
+	sf_init_coms();
 
 
 	/* Below is there for convenience when we are implementing scheduling */
