@@ -81,12 +81,11 @@ void sf_uart_init() {
     (void) xStatusUART;
 
     //set UART options
-    //XUartPs_SetBaudRate(&xuart, 115200);
+    XUartPs_SetBaudRate(&xuart, 9600);
     //Want to also put in interrupt mode later
 }
 
 void sf_uart_write(u8 *out, BaseType_t numBytes) {
 
     XUartPs_Send(&xuart, out, numBytes);
-
 }

@@ -1,5 +1,6 @@
 #ifndef SF_GPS_SETTINGS_H
 #define SF_GPS_SETTINGS_H
+
 void sf_gps_full_cold_start();
 
 void sf_gps_cold_start();

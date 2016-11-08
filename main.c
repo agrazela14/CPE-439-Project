@@ -68,20 +68,6 @@
 */
 
 /******************************************************************************
- *
- * See http://www.freertos.org/RTOS-Xilinx-Zynq.html for instructions.
- *
- * This project provides three demo applications.  A simple blinky style
- * project, a more comprehensive test and demo application, and an lwIP example.
- * The mainSELECTED_APPLICATION setting (defined in this file) is used to
- * select between the three.  The simply blinky demo is implemented and
- * described in main_blinky.c.  The more comprehensive test and demo application
- * is implemented and described in main_full.c.  The lwIP example is implemented
- * and described in main_lwIP.c.
- *
- * This file implements the code that is not demo specific, including the
- * hardware setup and FreeRTOS hook functions.
- *
  * !!! IMPORTANT NOTE !!!
  * The GCC libraries that ship with the Xilinx SDK make use of the floating
  * point registers.  To avoid this causing corruption it is necessary to avoid
@@ -106,18 +92,14 @@
 #include <stdio.h>
 #include <limits.h>
 
-/* Scheduler include files. */
+/* RTOS include files. */
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "queue.h"
 
-/* Standard demo includes. */
-#include "partest.h"
-#include "TimerDemo.h"
-#include "QueueOverwrite.h"
-#include "EventGroupsDemo.h"
-#include "TaskNotify.h"
-#include "IntSemTest.h"
+/* Sensor Fusion Project Includes. */
+#include "sf_coms.h"
 
 /* Xilinx includes. */
 #include "platform.h"
@@ -125,6 +107,9 @@
 #include "xscutimer.h"
 #include "xscugic.h"
 #include "xil_exception.h"
+
+/* temporary serial include */
+#include "serial.h"
 
 /* mainSELECTED_APPLICATION is used to select between three demo applications,
  * as described at the top of this file.
@@ -151,7 +136,7 @@ static void prvSetupHardware( void );
  * mainSELECTED_APPLICATION definition.
  */
 #if ( mainSELECTED_APPLICATION == 0 )
-	extern void main_blinky( void );
+	extern void sf_main( void );
 #elif ( mainSELECTED_APPLICATION == 1 )
 	extern void main_full( void );
 #elif ( mainSELECTED_APPLICATION == 2 )
@@ -191,14 +176,14 @@ int main( void )
 {
 	/* See http://www.freertos.org/RTOS-Xilinx-Zynq.html for instructions. */
 
-	/* Configure the hardware ready to run the demo. */
+	/* Configure the hardware */
 	prvSetupHardware();
 
 	/* The mainSELECTED_APPLICATION setting is described at the top	of this
 	file. */
 	#if( mainSELECTED_APPLICATION == 0 )
 	{
-		main_blinky();
+		sf_main();
 	}
 	#elif( mainSELECTED_APPLICATION == 1 )
 	{
@@ -239,8 +224,10 @@ XScuGic_Config *pxGICConfig;
 	configASSERT( xStatus == XST_SUCCESS );
 	( void ) xStatus; /* Remove compiler warning if configASSERT() is not defined. */
 
-	/* Initialise the LED port. */
-	vParTestInitialise();
+	/* Initialize communications */
+	xSerialPortInitMinimal(115200, 200);
+	sf_uart_init();
+	sf_iic_init();
 
 	/* The Xilinx projects use a BSP that do not allow the start up code to be
 	altered easily.  Therefore the vector table used by FreeRTOS is defined in

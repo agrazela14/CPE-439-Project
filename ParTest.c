@@ -93,13 +93,13 @@
 /*-----------------------------------------------------------*/
 
 static XGpioPs xGpio;
+static void *console;
 
 /*-----------------------------------------------------------*/
 
 void vParTestInitialise( void )
 {
-	sf_uart_init();
-	sf_iic_init();
+
 	/* Rest from old GPIO Lab. Might need later. */
 	//XGpioPs_Config *pxConfigPtr;
 	//BaseType_t xStatus;
@@ -128,6 +128,7 @@ void vParTestToggleLED( unsigned portBASE_TYPE uxLED )
 {
 	static u32 out = 0xABCDEF06;
 	sf_iic_send((u8 *)(&out), 4);
+	vSerialPutString(console, "dick", 4);
 //BaseType_t xLEDState;
 
 //	( void ) uxLED;

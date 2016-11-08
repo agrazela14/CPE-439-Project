@@ -1,4 +1,4 @@
-#include <sf_coms.h>
+#include "sf_coms.h"
 #include <stdio.h>
 
 /* From the Data Sheet:
@@ -47,7 +47,7 @@ void sf_gps_warm_start() {
 }
 
 void sf_gps_hot_start() {
-    char hotStartMessage[StartMessageLength] = "$PMTK101*32<CR><LF>";
+    char *hotStartMessage = "$PMTK101*32<CR><LF>";
     sf_uart_write((u8 *)hotStartMessage, StartMessageLength);
 }
 
@@ -61,7 +61,7 @@ void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
     
     snprintf(baudRateBuf, "%d", baudRate);
     sprintf(preamble, "$PMKT251,");
-    sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, baudRateBuf, checkSumBuf);
+    //sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, baudRateBuf, checkSumBuf);
     
     sf_uart_write((u8 *)baudRateMessage, baudByteLen + messagePreambleLength + baudRateExtraCharactes);
 }
@@ -69,15 +69,15 @@ void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
 void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
     char intervalBuf[intervalByteLength];
     char preamble[messagePreambleLength + 1];
-    char intervalMessage[intervalByteLength + messagePreambleLength + ];
+    //char intervalMessage[intervalByteLength + messagePreambleLength + ];
     char checkSumBuf[2];
     
     sprintf(intervalBuf, "%d", interval);
     sprintf(preamble, "$PMKT220,");
-    sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, intervalBuf, checkSumBuf);
+    //sprintf(intervalMessage, "%s%s*%s<CR><LF>", preamble, intervalBuf, checkSumBuf);
     
     //This 12 comes from the comma, the *, the 2 bytes for the checksum, and 8 from <CR><LF>
-    sf_uart_write(intervalMessage, messagePreambleLength + intervalByteLength + 12);
+    //sf_uart_write(intervalMessage, messagePreambleLength + intervalByteLength + 12);
 }
 
 //This will construct and send a message that sets each valid nmea sentence recieve rate based on 1 - 5 fixes
@@ -85,7 +85,7 @@ void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
 //nmea Rate example $PMTK314,1,1,1,1,1,5,0,0,0,0,0,0,0,0,0,0,0,0,0*2C<CR><LF> 
 
 void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
-    char nmeaRateMessage[nmeaRateMessageLenth];
+    //char nmeaRateMessage[nmeaRateMessageLenth];
     char GLLBuf[2];
     char RMCBuf[2];
     char VTGBuf[2];
@@ -111,8 +111,8 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
     snprintf(ReservedBuf, "0,0,0,0,0,0,0,0,0,0,0,0,0", 25);
     snprintf(preamble, "$PMTK314,", messagePreambleLength + 1);
     
-    snprintf(nmeaRateMessage, "%s%s%s%s%s%s%s%s%s", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, checkSumBuf, ReservedBuf, CRLFBuf);
-    sf_uart_write((u8 *)nmeaRateMessage, nmeaRateMessageLength);
+    //snprintf(nmeaRateMessage, "%s%s%s%s%s%s%s%s%s", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, checkSumBuf, ReservedBuf, CRLFBuf);
+    //sf_uart_write((u8 *)nmeaRateMessage, nmeaRateMessageLength);
 }
 
 

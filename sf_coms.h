@@ -6,6 +6,7 @@
 
 #ifndef SRC_SF_COMS_H_
 #define SRC_SF_COMS_H_
+#include "FreeRTOS.h"
 
 void sf_uart_init();
 
