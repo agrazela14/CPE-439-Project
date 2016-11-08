@@ -9,7 +9,7 @@
 #include "xuartps.h"
 #include "xscugic.h"
 #include "xiicps.h"
-#include "xsemaphr.h"
+#include "semphr.h"
 #include "sf_coms.h"
 
 #define IIC_CLK_FREQ 100000
