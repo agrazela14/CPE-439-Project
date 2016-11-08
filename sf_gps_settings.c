@@ -152,3 +152,6 @@ void sf_gps_checksum_calc(char *checksumBuf, char *messageString) {
    sprintf(checksumBuf, "%*X\0", 2, checksum);
 }
 
+void sf_gps_read(char *readBuf, u32 numBytes) {
+   
+}
