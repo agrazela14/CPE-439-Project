@@ -153,5 +153,6 @@ void sf_gps_checksum_calc(char *checksumBuf, char *messageString) {
 }
 
 void sf_gps_read(char *readBuf, u32 numBytes) {
-   
+    sf_uart_read(readBuf, numBytes);
+
 }
