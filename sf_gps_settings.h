@@ -14,8 +14,8 @@ void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength);
 	
 void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV);	
 
-void sf_gps_checksum_calc(char *checksumBuf, char *messageString)
+void sf_gps_checksum_calc(char *checksumBuf, char *messageString);
 
-void sf_gps_read(char *readBuf, u32 numBytes)
+void sf_gps_read(char *readBuf, u32 numBytes);
 	
 #endif
