@@ -22,7 +22,6 @@
 
 /*
 The Datasheet for commands to send to this memer is availble at https://cdn-shop.adafruit.com/datasheets/PMTK_A11.pdf
-Also note, I'm not sure if the <CR><LF> is supposed to be two certain bytes or something?
 Another note, the GPS is always spitting out it's data without the need to query it, or is that not right?
 */
 
@@ -66,13 +65,18 @@ void sf_gps_hot_start() {
 
 void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
     char baudRateBuf[baudByteLen];
-    char baudRateMessage[messagePreambleLength + baudByteLen + baudRateExtraCharactes];
+    char baudRateMessage[messagePreambleLength + baudByteLen + baudRateExtraCharacters];
     char preamble[messagePreambleLength + 1];
-    char checkSumBuf[checksumLength];
+    char checksumBuf[checksumLength];
     
     snprintf(baudRateBuf, "%d\0", baudRate);
     sprintf(preamble, "$PMKT251,\0");
-    sprintf(intervalMessage, "%s%s*%s\r\n", preamble, baudRateBuf, checkSumBuf);
+    //sprintf(intervalMessage, "%s%s*%s\r\n", preamble, baudRateBuf, checksumBuf);
+
+    sprintf(baudRateMessage, "%s%s*", preamble, baudRateBuf);
+    sf_gps_checksum_calc(checksumBuf, baudRateMessage);
+    sprintf(baudRateMessage, "%s\r\n", checksumBuf);
+
     
     sf_uart_write((u8 *)baudRateMessage, baudByteLen + messagePreambleLength + checksumLength + 4);
     //the +4 is a , * and \r\n
@@ -82,11 +86,15 @@ void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
     char intervalBuf[intervalByteLength];
     char preamble[messagePreambleLength + 1];
     char intervalMessage[intervalByteLength + messagePreambleLength + checksumLength + 4];
-    char checkSumBuf[checksumLength];
+    char checksumBuf[checksumLength];
     
     sprintf(intervalBuf, "%d\0", interval);
     sprintf(preamble, "$PMKT220,\0");
-    sprintf(intervalMessage, "%s%s*%s\r\n", preamble, intervalBuf, checkSumBuf);
+    //sprintf(intervalMessage, "%s%s*%s\r\n", preamble, intervalBuf, checksumBuf);
+
+    sprintf(intervalMessage, "%s%s*", preamble, intervalBuf);
+    sf_gps_checksum_calc(checksumBuf, intervalMessage);
+    sprintf(intervalMessage, "%s\r\n", checksumBuf);
     
     sf_uart_write(intervalMessage, messagePreambleLength + intervalByteLength + 4);
     //the +4 is a , * and \r\n
@@ -104,7 +112,7 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
     char GSABuf[3];
     char GSVBuf[3];
     char CRLFBuf[3];
-    char checkSumBuf[3];
+    char checksumBuf[3];
     char ReservedBuf[nmeaRateReservedLength];
     char preamble[messagePreambleLength];
     
@@ -125,7 +133,22 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
     snprintf(ReservedBuf, "0,0,0,0,0,0,0,0,0,0,0,0,0\0");
     snprintf(preamble, "$PMTK314,\0");
     
-    snprintf(nmeaRateMessage, "%s%s%s%s%s%s%s%s%s", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, ReservedBuf, checksumBuf, CRLFBuf);
+    snprintf(nmeaRateMessage, "%s%s%s%s%s%s%s*", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, ReservedBuf);
+    sf_gps_checksum_calc(checksumBuf, nmeaRateMessage);
+
+    snprintf(nmeaRateMessage + (messagePreambleLength + 10 + nmeaRateReservedLength), "%s%s", checksumBuf, CRLFBuf); 
+
     sf_uart_write((u8 *)nmeaRateMessage, nmeaRateMessageLength);
+}
+
+void sf_gps_checksum_calc(char *checksumBuf, char *messageString) {
+   char *next = messageString[2];
+   u16 checksum = messageString[1];
+   
+   while (*next != '*') {
+      checksum ^= next++;
+   }
+
+   sprintf(checksumBuf, "%*X\0", 2, checksum);
 }
 
