@@ -1,3 +1,0 @@
-19:21:14 INFO  : Launching XSDB server: xsdb.bat -interactive C:\Users\twlen\Documents\RTOS\final\final_project\final_project.sdk\temp_xsdb_launch_script.tcl
-19:21:16 INFO  : XSDB server has started successfully.
-19:21:16 INFO  : Processing command line option -hwspec C:/Users/twlen/Documents/RTOS/cpe439_final/cpe439_final.sdk/cpe439_final_wrapper.hdf.
