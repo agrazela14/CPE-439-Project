@@ -51,5 +51,5 @@ void sf_main(void) {
 	mode from which main() is called is set in the C start up code and must be
 	a privileged mode (not user mode). */
 	for( ;; )
-		vSerialPutString(NULL, "dick", 4);
+		vSerialPutString(NULL, (signed char *)"dick", 4);
 }

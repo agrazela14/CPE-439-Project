@@ -26,26 +26,58 @@ static int snd = 0;
 
 void IIC_Handler(void *callBackRef, u32 Event) {
     if ((Event & XIICPS_EVENT_COMPLETE_RECV) != 0) {
-        rec = 1;
+        rec = 1; //semaphore instead
     }
     else if ((Event & XIICPS_EVENT_COMPLETE_SEND) != 0) {
-        snd = 1;
+        snd = 1; //semaphore instead
     }
 }
 
+void UART_Handler(void *callBackRef, u32 Event) {
+	/* All of the data has been sent */
+	if (Event == XUARTPS_EVENT_SENT_DATA) {
+		/* semaphore */
+	}
+
+	/* All of the data has been received */
+	if (Event == XUARTPS_EVENT_RECV_DATA) {
+		/* semaphore */
+	}
+}
+
 void sf_init_ints() {
+	/* Interrupt controller driver assumed to be initialized already */
+
+	/*
+	 * Connect the interrupt controller interrupt handler to the
+	 * hardware interrupt handling logic in the processor.
+	 */
     Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_IRQ_INT,
             (Xil_InterruptHandler)(XScuGic_InterruptHandler),
             &xInterruptController);
 
+    /* Connect IIC_1 device driver handler */
     XScuGic_Connect(&xInterruptController, XPAR_XIICPS_0_INTR,
             (Xil_InterruptHandler) (XIicPs_MasterInterruptHandler),
             (void *)&xiic);
 
+    /* Connect UART_0 device driver handler */
+    XScuGic_Connect(&xInterruptController, XPAR_XUARTPS_0_INTR,
+            (Xil_InterruptHandler) (XUartPs_InterruptHandler),
+            (void *)&xuart);
+
+    /* Enable Interrupts for IIC_1 */
     XScuGic_Enable(&xInterruptController, XPAR_XIICPS_0_INTR);
+
+    /* Enable Interrupts for UART_0 */
+    XScuGic_Enable(&xInterruptController, XPAR_XUARTPS_0_INTR);
 
     Xil_ExceptionEnable();
 
+    /* Set callback Handler for UART_0 */
+    XUartPs_SetHandler(&xuart, UART_Handler, (void *)(&xuart));
+
+    /* Set callback Handler for IIC_1 */
     XIicPs_SetStatusHandler(&xiic, (void *)(&xiic), IIC_Handler);
 }
 
@@ -84,6 +116,10 @@ void sf_uart_init() {
 }
 
 void sf_uart_write(u8 *out, BaseType_t numBytes) {
-
     XUartPs_Send(&xuart, out, numBytes);
+}
+
+void sf_uart_receive() {
+
+}
 }
