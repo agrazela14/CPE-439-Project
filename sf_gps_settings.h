@@ -1,6 +1,13 @@
 #ifndef SF_GPS_SETTINGS_H
 #define SF_GPS_SETTINGS_H
 
+typedef struct {
+    double longitude;
+    double latitude;
+    signed char NS; //negative 1 or positive 1, a mutliplier for latitude
+    signed char EW; //negative 1 or positive 1, a mutliplier for longitude
+} gpsData; 
+
 void sf_gps_full_cold_start();
 
 void sf_gps_cold_start();
