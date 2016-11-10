@@ -82,7 +82,7 @@ void sf_gps_set_baud(u32 baudRate, u8 baudByteLen) {
 void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
     char intervalBuf[intervalByteLength];
     char preamble[messagePreambleLength + 1];
-    //char intervalMessage[intervalByteLength + messagePreambleLength + ];
+    char intervalMessage[intervalByteLength + messagePreambleLength + ];
     char checksumBuf[2];
     
     sprintf(intervalBuf, "%d", interval);
