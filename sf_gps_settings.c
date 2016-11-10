@@ -34,7 +34,7 @@ Another note, the GPS is always spitting out it's data without the need to query
 void sf_gps_full_cold_start() {
     char fullColdStartMessage[StartMessageLength];
     sprintf(fullColdStartMessage, "$PMTK104*37\r\n");
-    sf_uart_write((u8 *)fullColdStartMessage, StartMessageLength);
+    sf_uart_send((u8 *)fullColdStartMessage, StartMessageLength);
 }
 
 void sf_gps_cold_start() {
