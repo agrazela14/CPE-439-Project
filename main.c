@@ -226,8 +226,6 @@ XScuGic_Config *pxGICConfig;
 
 	/* Initialize communications */
 	xSerialPortInitMinimal(115200, 200);
-	sf_uart_init();
-	sf_iic_init();
 
 	/* The Xilinx projects use a BSP that do not allow the start up code to be
 	altered easily.  Therefore the vector table used by FreeRTOS is defined in

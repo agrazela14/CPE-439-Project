@@ -32,20 +32,22 @@
 /* How to define time from ticks */
 //#define mainFREQUENCY_MS_1			( 420 / portTICK_PERIOD_MS )
 
+void vGPSReceiveTask(void *pvParameters);
+
 void sf_main(void) {
-	vSerialPutString(NULL, (signed char *)"Hello, starting up...\n", 22);
+	vSerialPutString(NULL, (signed char *)"Hello, starting up...\n", 23);
 
 	/* initialize instances of devices and their interrupt Handlers */
 	sf_init_coms();
 
 	xTaskCreate( vGPSReceiveTask,					/* The function that implements the task. */
 				"GPS Receive and Parse", 			/* The text name assigned to the task - for debug only as it is not used by the kernel. */
-				configMINIMAL_STACK_SIZE, 			/* The size of the stack to allocate to the task. */
+				4096, 			/* The size of the stack to allocate to the task. */
 				NULL, 								/* The parameter passed to the task - not used in this case. */
 				mainTASK_PRIORITY_GPS, 				/* The priority assigned to the task. */
 				NULL );								/* The task handle is not required, so NULL is passed. */
 
-	vSerialPutString(NULL, (signed char *)"Starting scheduler...\n", 22);
+	vSerialPutString(NULL, (signed char *)"Starting scheduler...\n", 23);
 
 	/* Start the tasks and timer running. */
 	vTaskStartScheduler();
@@ -62,7 +64,7 @@ void sf_main(void) {
 		;
 }
 
-vGPSReceiveTask(void *pvParameters) {
+void vGPSReceiveTask(void *pvParameters) {
 	(void) pvParameters; //to eliminate compiler warnings for nonuse
 	char recBuff[RECEIVE_BUFFER_SIZE], *buffPtr;
 	buffPtr = recBuff;
@@ -145,7 +147,9 @@ vGPSReceiveTask(void *pvParameters) {
 					sf_uart_receive(buffPtr, 2);
 					buffPtr += 2;
 
-					int gpsstrlen = ((int)(buffPtr - buffRec)) + 1;
+					*buffPtr++ = NULL;
+
+					int gpsstrlen = ((int)(buffPtr - recBuff));
 
 					vSerialPutString(NULL, (signed char *)recBuff, gpsstrlen);
 				}

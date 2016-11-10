@@ -88,7 +88,7 @@ void sf_gps_set_fix_interval(u32 interval, u32 intervalByteLength) {
     sprintf(intervalMessage, "%s%s*%s\r\n", preamble, intervalBuf, checksumBuf);
     
     //This 4 comes from the comma, the *, and 2 from <CR><LF>
-    sf_uart_send(intervalMessage, messagePreambleLength + intervalByteLength + checksumLength + 4);
+    sf_uart_send((u8 *)intervalMessage, messagePreambleLength + intervalByteLength + checksumLength + 4);
 }
 
 //This will construct and send a message that sets each valid nmea sentence recieve rate based on 1 - 5 fixes
@@ -109,12 +109,12 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
     char preamble[messagePreambleLength];
     
     sprintf(CRLFBuf, "\r\n");
-    sprintf(GLLBuf, "%ld", GLL);
-    sprintf(RMCBuf, "%ld", RMC);
-    sprintf(VTGBuf, "%ld", VTG);
-    sprintf(GSABuf, "%ld", GSA);
-    sprintf(GSVBuf, "%ld", GSV);
-    sprintf(GGABuf, "%ld", GGA);
+    sprintf(GLLBuf, "%c", GLL);
+    sprintf(RMCBuf, "%c", RMC);
+    sprintf(VTGBuf, "%c", VTG);
+    sprintf(GSABuf, "%c", GSA);
+    sprintf(GSVBuf, "%c", GSV);
+    sprintf(GGABuf, "%c", GGA);
         
     sprintf(GLLBuf + 1, ",");
     sprintf(RMCBuf + 1, ",");
@@ -136,7 +136,7 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
 }
 
 void sf_gps_checksum_calc(char *checksumBuf, char *messageString) {
-   char *next = messageString[2];
+   char *next = messageString + 2;
    u8 checksum = messageString[1];
    
    while (*next != '*') {
@@ -150,5 +150,5 @@ void sf_gps_checksum_calc(char *checksumBuf, char *messageString) {
 //In the case of an NMEA sentence, it will end with *<checksum>
 //the ack ends with *<checksum>\r\n
 void sf_gps_recieve(char *readBuf, u32 numBytes) {
-   sf_uart_recieve(readBuf, numBytes);
+   sf_uart_receive((u8 *)readBuf, numBytes);
 }
