@@ -139,7 +139,7 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
 
 void sf_gps_checksum_calc(char *checksumBuf, char *messageString) {
    char *next = messageString[2];
-   u16 checksum = messageString[1];
+   u8 checksum = messageString[1];
    
    while (*next != '*') {
       checksum ^= (*next);

@@ -1,3 +1,9 @@
+/* I have some doubts about the poly learn tutorial by now, so use this as a reference for FATfs
+ * http://elm-chan.org/fsw/ff/00index_e.html
+ * it seems to have differing ideas on how to use f_mount or needing f_mkfs for example
+ */
+
+
 #include "sf_coms.c"
 #include "sf_sdcard.h"
 #include <string.h>
