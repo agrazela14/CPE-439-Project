@@ -32,6 +32,7 @@ Another note, the GPS is always spitting out it's data without the need to query
 #define nmeaRateMessageLength 58
 #define checksumLength 3
 #define nmeaRateReservedLength 20
+#define zyboFIFOBufferLength 64
 
 //This should restart it to full factory default, clearing anything we have set
 void sf_gps_full_cold_start() {
