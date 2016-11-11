@@ -6,10 +6,11 @@
 
 #include "sf_coms.c"
 #include "sf_sdcard.h"
+#include "ff12b/src/ff.h"
 #include <string.h>
 
 
-SemaphoreHandle_t sdcardSendDone, sdcardRecDone;
+SemaphoreHandle_t sdcardSendDone, sdcardRecvDone;
 
 /****Here's a big thing for file variables and sich****/
 static FATFS fatfs;
@@ -32,53 +33,47 @@ u8 sourceAddress[10*1024*1024] _attribute_ ((aligned(32)));
 int sf_init_sdcard(FIL *fil, char *SD_File) {
     FRESULT Res;
     u32 BuffCnt;
-    u32 FileSize = (8*1024*1024);
+    BYTE work[_MAX_SS]; //Work area for the FSYS
     
-    /* 
-    for (BuffCnt = 0; BuffCnt < FileSize; BuffCnt++) {
-        SourceAddress[BuffCnt] = TEST + BuffCnt;
-    }
-    */
+    Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
+    
+    if (Res) {
+        return XST_FAILURE;
+    }    
 
-    Res = f_mount(0, &fatfs);
+    Res = f_mount(&fatfs, "", 0);
 
-    if (Res != FR_OK) {
+    if (Res) {
         return XST_FAILURE;
     }    
     
+    sdcardSendDone = xSemaphoreCreateBinary();
+    sdcardRecvDone = xSemaphoreCreateBinary();
+    
+    xSempahoreGive(sdcardRecvDone);
+    xSempahoreGive(sdcardSendDone);
+    
+    return XST_SUCCESS;
+}
+
+int sf_open_file(FIL *fil, char *SD_File) {}
     Res = f_open(fil, SD_File, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
 
     if (Res) {
         return XST_FAILURE;
     }    
-
     return XST_SUCCESS;
 }
+    
 
-int sf_write_sdcard_location(FIL *fil, void *SourceAddress, u32 FileSize, u32 *NumBytesWritten, u32 location) {
-    int Res = f_lseek(fil, location);
-
-    if (Res) {
-        return XST_FAILURE;
-    }
-
-    Res = f_write(fil, SourceAddress, FileSize, NumBytesWritten);
+int sf_write_file_location(FIL *fil, void *SourceAddress, u32 BytesToWrite, u32 *NumBytesWritten, u32 location) {
+    FRESULT Res = f_lseek(fil, location);
 
     if (Res) {
         return XST_FAILURE;
     }
 
-    return XST_SUCCESS;
-}
-
-int sf_read_sdcard_location(FIL *fil, void *DestinationAddress, u32 FileSize, u32 *NumBytesWritten, u32 location) {
-    int Res = f_lseek(fil, location);
-
-    if (Res) {
-        return XST_FAILURE;
-    }
-
-    Res = f_write(fil, DestinationAddress, FileSize, NumBytesWritten);
+    Res = f_write(fil, SourceAddress, BytesToWrite, NumBytesWritten);
 
     if (Res) {
         return XST_FAILURE;
@@ -87,12 +82,76 @@ int sf_read_sdcard_location(FIL *fil, void *DestinationAddress, u32 FileSize, u3
     return XST_SUCCESS;
 }
 
-int sf_close_sdcard_file(FIL *fil) {
-    int Res = f_close(fil);
+int sf_read_file_location(FIL *fil, void *DestinationAddress, u32 ReadSize, u32 *NumBytesRead, u32 location) {
+    FRESULT Res = f_lseek(fil, location);
+
+    if (Res) {
+        return XST_FAILURE;
+    }
+
+    Res = f_read(fil, DestinationAddress, ReadSize, NumBytesRead);
+
+    if (Res) {
+        return XST_FAILURE;
+    }
+
+    return XST_SUCCESS;
+}
+
+int sf_close_file(FIL *fil) {
+    FRESULT Res = f_close(fil);
     
     if (Res) {
         return XST_FAILURE;
     }
+    
+    return XST_SUCCESS;
+}
+
+int sf_unregister_work_area() {
+    FRESULT Res = f_mount(0, "", 0);
+    
+    if (Res) {
+        return XST_FAILURE;
+    }
+    return XST_SUCCESS;
+}
+
+//A test function to run after initing the File System, then check the micro SD card and see if you can see a file
+int sf_test_file() {
+    FRESULT Res;
+    FIL testFile;
+    char filename[16] = "Test";
+    char received[16];
+    int transferredBytes;
+    
+
+    Res = sf_open_file(&testFile, filename);
+
+    if (Res) {
+        return Res;
+    }
+    
+    //Write 4 bytes from "Test" to location 0, place how many bytes written into transferredBytes
+    Res = sf_write_file_location(&testFile, fileName, 4, &transferredBytes, 0); 
+
+    if (Res) {
+        return Res;
+    }
+    
+    //Read 4 bytes from the file and put them in recieved buffer, transferredBytes once again gets how many were actually read
+    Res = sf_read_file_location(&testFile, received, 4, &transferredBytes, 0); 
+
+    if (Res) {
+        return Res;
+    }
+
+    Res = sf_close_file(&testFile);
+
+    if (Res) {
+        return Res;
+    }
+
     return XST_SUCCESS;
 }
 
