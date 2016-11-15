@@ -5,7 +5,7 @@
 
 extern SemaphoreHandle_t sdcardSendDone, sdcardRecvDone;
 
-int sf_init_sdcard(FIL *fil, char *SD_File);
+int sf_init_sdcard();
 
 int sf_open_file(FIL *fil, char *SD_File);
 

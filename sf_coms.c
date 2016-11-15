@@ -13,8 +13,6 @@
 #include "sf_coms.h"
 
 #define IIC_CLK_FREQ 100000
-#define FIFO_SIZE 64
-#define RX_QUEUE_LEN 1024
 
 /* Interrupt Controller Initialized in main */
 extern XScuGic xInterruptController;
@@ -33,9 +31,6 @@ static XIicPs xiic;
  */
 SemaphoreHandle_t uartSendDone, uartRecDone;
 SemaphoreHandle_t iicSendDone, iicRecDone;
-
-/* For receiving constant stream of data from GPS */
-static QueueHandle_t xuartRxQueue = NULL;
 
 /* Internal indicators to stop multiple reads and writes from ruining each other */
 static SemaphoreHandle_t uartSemaSend, uartSemaRec;
@@ -59,59 +54,30 @@ void IIC_Handler(void *callBackRef, u32 Event) {
         xSemaphoreGiveFromISR(iicSendDone, &xHigherPriorityTaskWoken);
         xSemaphoreGiveFromISR(iicSemaSend, &xHigherPriorityTaskWoken);
     }
-
-    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 void UART_Handler(void *callBackRef, u32 Event, u32 EventData) {
 	(void) callBackRef; //Removes compiler warning for not using callBackRef
 	(void) EventData; 	//... or EventData
-
-	portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-	uint32_t ulActiveInterrupts, ulChannelStatusRegister;
-	char cChar;
+	static portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 
 	/* All of the data has been sent */
-	if ((Event == XUARTPS_EVENT_SENT_DATA)) {
-		xSemaphoreGiveFromISR(uartSendDone, &xHigherPriorityTaskWoken);
+	if (Event == XUARTPS_EVENT_SENT_DATA) {
+        xSemaphoreGiveFromISR(uartSendDone, &xHigherPriorityTaskWoken);
         xSemaphoreGiveFromISR(uartSemaSend, &xHigherPriorityTaskWoken);
 	}
 
-	/* Data has been received */
-	if ((Event == XUARTPS_EVENT_RECV_DATA)  | (Event == XUARTPS_EVENT_RECV_TOUT) ) {
-		/* Read the Channel Status Register to determine if there is any data in
-		the RX FIFO. */
-		ulChannelStatusRegister = XUartPs_ReadReg( XPAR_PS7_UART_0_BASEADDR, XUARTPS_SR_OFFSET );
-
-		/* Move data from the Rx FIFO to the Rx queue.  NOTE THE COMMENTS AT THE
-		TOP OF THIS FILE ABOUT USING QUEUES FOR THIS PURPSOE. */
-		while( ( ulChannelStatusRegister & XUARTPS_SR_RXEMPTY ) == 0 )
-		{
-			cChar =	XUartPs_ReadReg( XPAR_PS7_UART_0_BASEADDR, XUARTPS_FIFO_OFFSET );
-
-			/* If writing to the queue unblocks a task, and the unblocked task
-			has a priority above the currently running task (the task that this
-			interrupt interrupted), then xHigherPriorityTaskWoken will be set
-			to pdTRUE inside the xQueueSendFromISR() function.
-			xHigherPriorityTaskWoken is then passed to portYIELD_FROM_ISR() at
-			the end of this interrupt handler to request a context switch so the
-			interrupt returns directly to the (higher priority) unblocked
-			task. */
-			xQueueSendFromISR( xuartRxQueue, &cChar, &xHigherPriorityTaskWoken );
-			ulChannelStatusRegister = XUartPs_ReadReg( XPAR_PS7_UART_0_BASEADDR, XUARTPS_SR_OFFSET );
-		}
-
-        //xSemaphoreGiveFromISR(uartRecDone, &xHigherPriorityTaskWoken);
-        //xSemaphoreGiveFromISR(uartSemaRec, &xHigherPriorityTaskWoken);
+	/* All of the data has been received */
+	if (Event == XUARTPS_EVENT_RECV_DATA) {
+        xSemaphoreGiveFromISR(uartRecDone, &xHigherPriorityTaskWoken);
+        xSemaphoreGiveFromISR(uartSemaRec, &xHigherPriorityTaskWoken);
 	}
-
-	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 void sf_init_coms() {
+	sf_init_ints();
 	sf_init_iic();
 	sf_init_uart();
-	sf_init_ints();
 }
 
 void sf_init_ints() {
@@ -148,16 +114,6 @@ void sf_init_ints() {
 
     /* Set callback Handler for IIC_1 */
     XIicPs_SetStatusHandler(&xiic, (void *)(&xiic), IIC_Handler);
-
-    /* Interrupts to enable for UART_0
-     * Only RX trigger interrupt is cared about here */
-	u32 UARTIntrMask =
-			XUARTPS_IXR_TOUT |
-			XUARTPS_IXR_TXEMPTY | XUARTPS_IXR_RXFULL |
-			XUARTPS_IXR_RXOVR;
-
-
-    XUartPs_SetInterruptMask(&xuart, UARTIntrMask);
 }
 
 void sf_init_iic() {
@@ -186,8 +142,6 @@ void sf_init_iic() {
 }
 
 void sf_init_uart() {
-	xuartRxQueue = xQueueCreate( RX_QUEUE_LEN , sizeof( char ) );
-
     XUartPs_Config *pxConfigPtrUART;
     BaseType_t xStatusUART;
 
@@ -197,19 +151,9 @@ void sf_init_uart() {
     configASSERT( xStatusUART == XST_SUCCESS );
     (void) xStatusUART;
 
-	/* Check hardware build */
-    xStatusUART = XUartPs_SelfTest(&xuart);
-    configASSERT(xStatusUART  == XST_SUCCESS );
-
     //set UART options
     XUartPs_SetBaudRate(&xuart, 9600);
-
-	/* Set the trigger level to 2 bytes */
-	XUartPs_SetFifoThreshold(&xuart, 2);
-
-    //no receive timeout
-    //XUartPs_SetRecvTimeout(&xuart, );
-
+    //Want to also put in interrupt mode later
 
     //Initialize semaphores to indicate the end of sending and receiving
     uartSemaSend = xSemaphoreCreateBinary();
@@ -263,17 +207,12 @@ u32 sf_uart_send(u8 *out, BaseType_t numBytes) {
     return bytesSent;
 }
 
-void sf_uart_receive(char *in, BaseType_t numBytes) {
-	//xSemaphoreTake(uartSemaRec, portMAX_DELAY); //block on previous call to finish
+u32 sf_uart_receive(u8 *in, BaseType_t numBytes) {
+	xSemaphoreTake(uartSemaRec, portMAX_DELAY); //block on previous call to finish
 
-	//if(uxSemaphoreGetCount(uartRecDone)) //make sure external indicator cleared
-	//	xSemaphoreTake(uartRecDone, 1); //shouldn't ever need to block...
+	if(uxSemaphoreGetCount(uartRecDone)) //make sure external indicator cleared
+		xSemaphoreTake(uartRecDone, 1); //shouldn't ever need to block...
 
-	//u32 received = XUartPs_Recv(&xuart, in, numBytes);
-	//(void) received;
-	//u32 test = XUartPs_GetInterruptMask	(&xuart);
-
-	int i;
-	for (i = numBytes; i > 0; i--)
-		xQueueReceive( xuartRxQueue, in + (numBytes - i), portMAX_DELAY );
+	u32 bytesRecv = XUartPs_Recv(&xuart, in, numBytes);
+	return bytesRecv;
 }
