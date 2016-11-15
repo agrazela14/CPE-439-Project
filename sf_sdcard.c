@@ -116,8 +116,9 @@ int sf_close_file(FIL *fil) {
     return XST_SUCCESS;
 }
 
+//I think this is the right way to do this
 int sf_unregister_work_area() {
-    FRESULT Res = f_mount(0, NULL);
+    FRESULT Res = f_mount(NULL, "0:/", 0);
     
     if (Res) {
         return XST_FAILURE;
