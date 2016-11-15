@@ -39,7 +39,8 @@ int sf_init_sdcard() {
     //Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
     
     //The f_mkfs in xilinx doesn't follow the online version 
-    Res = f_mkfs("0:/", 0, 0);
+    //I also Don't know if we need mkfs, it may already have one
+    //Res = f_mkfs("0:/", 0, 0);
     //Res = f_mkfs(0, 0, 4*1024);
     
     if (Res) {
