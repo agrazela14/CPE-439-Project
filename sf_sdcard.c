@@ -63,8 +63,8 @@ int sf_init_sdcard(FIL *fil, char *SD_File) {
     return XST_SUCCESS;
 }
 
-int sf_open_file(FIL *fil, char *SD_File) {
-    Res = f_open(fil, SD_File, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
+int sf_open_file(FIL *fil, char *SD_File) {}
+    FRESULT Res = f_open(fil, SD_File, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
 
     if (Res) {
         return XST_FAILURE;
@@ -130,7 +130,7 @@ int sf_test_file() {
     FIL testFile;
     char filename[16] = "Test";
     char received[16];
-    int transferredBytes;
+    u32 transferredBytes;
     
 
     Res = sf_open_file(&testFile, filename);
