@@ -39,31 +39,48 @@ void vGPSReceiveTask(void *pvParameters);
 void vIMUFetchTask(void *pvParameters);
 
 void sf_main(void) {
-	vSerialPutString(NULL, (signed char *)"Hello, starting up...\n", 23);
-
 	/* initialize instances of devices and their interrupt Handlers */
 	sf_init_coms();
+
+	/* Configure IMU */
 	sf_imu_init();
 
+	/* Test code for SD card
+	 * FRESULT Res;
+	Res = sf_init_sdcard();
 
-	//xTaskCreate( vGPSReceiveTask,					/* The function that implements the task. */
-	//			"GPS Parse", 						/* The text name assigned to the task - for debug only as it is not used by the kernel. */
-	//			4096, 								/* The size of the stack to allocate to the task. */
-	//			NULL, 								/* The parameter passed to the task - not used in this case. */
-	//			mainTASK_PRIORITY_GPS, 				/* The priority assigned to the task. */
-	//			NULL );								/* The task handle is not required, so NULL is passed. */
+	if(Res) {
+		vSerialPutString(NULL, (signed char *)"Failure\r\n", strlen("Failure\r\n"));
+	}
+	else
+		vSerialPutString(NULL, (signed char *)"SUCCESS\r\n", strlen("SUCCESS\r\n"));
 
-	//xTaskCreate( vIMUFetchTask,					/* The function that implements the task. */
-	//			"IMU Fetch", 						/* The text name assigned to the task - for debug only as it is not used by the kernel. */
-	//			4096, 								/* The size of the stack to allocate to the task. */
-	//			NULL, 								/* The parameter passed to the task - not used in this case. */
-	//			mainTASK_PRIORITY_IMU, 				/* The priority assigned to the task. */
-	//			NULL );								/* The task handle is not required, so NULL is passed. */
+	Res = sf_test_file();
 
-	vSerialPutString(NULL, (signed char *)"Starting scheduler...\n", 23);
+	if(Res) {
+		vSerialPutString(NULL, (signed char *)"Failure\r\n", strlen("Failure\r\n"));
+	}
+	else
+		vSerialPutString(NULL, (signed char *)"SUCCESS\r\n", strlen("SUCCESS\r\n"));
+	*/
+
+
+	xTaskCreate( vGPSReceiveTask,					// The function that implements the task.
+				"GPS Parse", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_GPS, 				// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
+
+	xTaskCreate( vIMUFetchTask,						// The function that implements the task.
+				"IMU Fetch", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_IMU, 				// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
 
 	/* Start the tasks and timer running. */
-	//vTaskStartScheduler();
+	vTaskStartScheduler();
 
 	/* If all is well, the scheduler will now be running, and the following
 	line will never be reached.  If the following line does execute, then
@@ -106,15 +123,15 @@ void vGPSReceiveTask(void *pvParameters) {
 
 	for(;;) {
 		sf_uart_receive(buffPtr, 1); /* Start interrupt-driven receive (does not poll wait) */
-		xSemaphoreTake(uartRecDone, portMAX_DELAY); /* block until something received */
+		//xSemaphoreTake(uartRecDone, portMAX_DELAY); /* block until something received */
 
 		/* Check for NMEA sentence start delimiter */
 		if (*buffPtr++ == '$') {
 			sf_uart_receive(buffPtr, SENTENCE_NAM_LEN); 	/* Start another receive for next part of */
-			xSemaphoreTake(uartRecDone, portMAX_DELAY);	/* sentence, block until done */
+			//xSemaphoreTake(uartRecDone, portMAX_DELAY);	/* sentence, block until done */
 
 			/* Check for correct sentence type and validity */
-			if (!strcmp(buffPtr, "GPRMC,")) {
+			if (!strncmp(buffPtr, "GPRMC,", SENTENCE_NAM_LEN)) {
 				buffPtr += SENTENCE_NAM_LEN;
 
 				/* Run through timestamp field */
@@ -125,7 +142,7 @@ void vGPSReceiveTask(void *pvParameters) {
 				/* Collect Validity bit char and check */
 				sf_uart_receive(buffPtr, 2);
 
-				if (*buffPtr == 'A') { /* 'A' is valid, 'V' is not */
+				if (*buffPtr == 'A' || buffPtr == 'V') { /* 'A' is valid, 'V' is not */
 					buffPtr += 2;
 					char *fieldStart = buffPtr;
 					int fieldLength = 0;

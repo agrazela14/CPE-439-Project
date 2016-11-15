@@ -44,9 +44,9 @@ int sf_init_sdcard() {
     //Res = f_mkfs("0:/", 0, 0);
     //Res = f_mkfs(0, 0, 4*1024);
     
-    if (Res) {
-        return XST_FAILURE;
-    }    
+    //if (Res) {
+    //   return XST_FAILURE;
+    //}
 
     //Res = f_mount(0, &fatfs);
     Res = f_mount(&fatfs, "0:/", 0);
