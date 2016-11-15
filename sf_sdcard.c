@@ -34,26 +34,20 @@ static FATFS fatfs;
 #define TEST 7
 
 
-int sf_init_sdcard(FIL *fil, char *SD_File) {
-	(void) fil;
-	(void) SD_File;
-
-    FRESULT Res;
-    u32 BuffCnt;
-    BYTE work[_MAX_SS]; //Work area for the FSYS
-    
+int sf_init_sdcard() {
     //This is the way the documentation online says, xlinix disagrees
     //Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
     
     //The f_mkfs in xilinx doesn't follow the online version 
-    //Res = f_mkfs("0:/", 0, 0);
-    Res = f_mkfs(0, 0, 4*1024);
+    Res = f_mkfs("0:/", 0, 0);
+    //Res = f_mkfs(0, 0, 4*1024);
     
     if (Res) {
         return XST_FAILURE;
     }    
 
-    Res = f_mount(0, &fatfs);
+    //Res = f_mount(0, &fatfs);
+    Res = f_mount(&fatfs, "0:/", 0);
 
     if (Res) {
         return XST_FAILURE;
@@ -121,7 +115,7 @@ int sf_close_file(FIL *fil) {
 }
 
 int sf_unregister_work_area() {
-    FRESULT Res = f_mount(0, "", 0);
+    FRESULT Res = f_mount(0, NULL);
     
     if (Res) {
         return XST_FAILURE;
