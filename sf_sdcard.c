@@ -37,6 +37,7 @@ static FATFS fatfs;
 int sf_init_sdcard() {
     //This is the way the documentation online says, xlinix disagrees
     //Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
+    FRESULT Res;
     
     //The f_mkfs in xilinx doesn't follow the online version 
     //I also Don't know if we need mkfs, it may already have one
