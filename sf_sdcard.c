@@ -4,9 +4,14 @@
  */
 
 
-#include "sf_coms.c"
+#include "sf_coms.h"
 #include "sf_sdcard.h"
-#include "ff12b/src/ff.h"
+#include "xparameters.h"
+#include "xsdps.h"
+#include "xplatform_info.h"
+#include "xil_printf.h"
+#include "xil_cache.h"
+#include "ff.h"
 #include <string.h>
 
 
@@ -15,19 +20,17 @@ SemaphoreHandle_t sdcardSendDone, sdcardRecvDone;
 /****Here's a big thing for file variables and sich****/
 static FATFS fatfs;
 
-/*
 #ifdef _ICCARM_
 #pragma datat alignment = 32
-u8 destinationAddress[10*1024*1024]
-u8 sourceAddress[10*1024*1024]
+//u8 destinationAddress[10*1024*1024]
+//u8 sourceAddress[10*1024*1024]
 #pragma data_alignment = 4
 #else
-u8 destinationAddress[10*1024*1024] _attribute_ ((aligned(32)));
-u8 sourceAddress[10*1024*1024] _attribute_ ((aligned(32)));
+//u8 destinationAddress[10*1024*1024] _attribute_ ((aligned(32)));
+//u8 sourceAddress[10*1024*1024] _attribute_ ((aligned(32)));
 #endif
 
 #define TEST 7
-*/
 
 
 int sf_init_sdcard(FIL *fil, char *SD_File) {
@@ -35,7 +38,10 @@ int sf_init_sdcard(FIL *fil, char *SD_File) {
     u32 BuffCnt;
     BYTE work[_MAX_SS]; //Work area for the FSYS
     
-    Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
+    //This is the way the documentation online says, xlinix disagrees
+    //Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
+
+    Res = f_mkfs("0:/", 0, 0);
     
     if (Res) {
         return XST_FAILURE;
