@@ -37,6 +37,7 @@ static FATFS fatfs;
 int sf_init_sdcard() {
     //This is the way the documentation online says, xlinix disagrees
     //Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
+    FRESULT Res;
     
     //The f_mkfs in xilinx doesn't follow the online version 
     //I also Don't know if we need mkfs, it may already have one
@@ -115,8 +116,9 @@ int sf_close_file(FIL *fil) {
     return XST_SUCCESS;
 }
 
+//I think this is the right way to do this
 int sf_unregister_work_area() {
-    FRESULT Res = f_mount(0, NULL);
+    FRESULT Res = f_mount(NULL, "0:/", 0);
     
     if (Res) {
         return XST_FAILURE;
