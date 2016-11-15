@@ -9,6 +9,7 @@
 #include "xparameters.h"
 #include "xsdps.h"
 #include "xplatform_info.h"
+#include "semphr.h"
 #include "xil_printf.h"
 #include "xil_cache.h"
 #include "ff.h"
@@ -34,6 +35,9 @@ static FATFS fatfs;
 
 
 int sf_init_sdcard(FIL *fil, char *SD_File) {
+	(void) fil;
+	(void) SD_File;
+
     FRESULT Res;
     u32 BuffCnt;
     BYTE work[_MAX_SS]; //Work area for the FSYS
