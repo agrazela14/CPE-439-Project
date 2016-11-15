@@ -1,3 +1,8 @@
+#ifndef SF_SDCARD_H
+#define SF_SDCARD_H
+
+#include "ff.h"
+
 extern SemaphoreHandle_t sdcardSendDone, sdcardRecvDone;
 
 int sf_init_sdcard(FIL *fil, char *SD_File);
@@ -14,3 +19,4 @@ int sf_unregister_work_area();
 
 int sf_test_file();
 
+#endif

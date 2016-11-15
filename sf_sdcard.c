@@ -9,6 +9,7 @@
 #include "xparameters.h"
 #include "xsdps.h"
 #include "xplatform_info.h"
+#include "semphr.h"
 #include "xil_printf.h"
 #include "xil_cache.h"
 #include "ff.h"
@@ -62,7 +63,7 @@ int sf_init_sdcard(FIL *fil, char *SD_File) {
     return XST_SUCCESS;
 }
 
-int sf_open_file(FIL *fil, char *SD_File) {}
+int sf_open_file(FIL *fil, char *SD_File) {
     Res = f_open(fil, SD_File, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
 
     if (Res) {
