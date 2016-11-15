@@ -62,8 +62,8 @@ int sf_init_sdcard(FIL *fil, char *SD_File) {
     sdcardSendDone = xSemaphoreCreateBinary();
     sdcardRecvDone = xSemaphoreCreateBinary();
     
-    xSempahoreGive(sdcardRecvDone);
-    xSempahoreGive(sdcardSendDone);
+    xSemaphoreGive(sdcardRecvDone);
+    xSemaphoreGive(sdcardSendDone);
     
     return XST_SUCCESS;
 }
