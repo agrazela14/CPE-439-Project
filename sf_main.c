@@ -27,12 +27,14 @@
 
 /* Priorities at which the tasks are created. */
 #define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 1 )
-//#define	mainTASK_PRIORITY_2			( tskIDLE_PRIORITY + 2 )
+#define		mainTASK_PRIORITY_IMU			( tskIDLE_PRIORITY + 2 )
 
 /* How to define time from ticks */
 //#define mainFREQUENCY_MS_1			( 420 / portTICK_PERIOD_MS )
 
+/* Task Forward Declarations */
 void vGPSReceiveTask(void *pvParameters);
+void vIMUFetchTask(void *pvParameters);
 
 void sf_main(void) {
 	vSerialPutString(NULL, (signed char *)"Hello, starting up...\n", 23);
@@ -46,11 +48,17 @@ void sf_main(void) {
 				NULL, 								/* The parameter passed to the task - not used in this case. */
 				mainTASK_PRIORITY_GPS, 				/* The priority assigned to the task. */
 				NULL );								/* The task handle is not required, so NULL is passed. */
+	//xTaskCreate( vIMUFetchTask,					/* The function that implements the task. */
+	//			"IMU Fetch", 						/* The text name assigned to the task - for debug only as it is not used by the kernel. */
+	//			4096, 								/* The size of the stack to allocate to the task. */
+	//			NULL, 								/* The parameter passed to the task - not used in this case. */
+	//			mainTASK_PRIORITY_IMU, 				/* The priority assigned to the task. */
+	//			NULL );								/* The task handle is not required, so NULL is passed. */
 
 	vSerialPutString(NULL, (signed char *)"Starting scheduler...\n", 23);
 
 	/* Start the tasks and timer running. */
-	vTaskStartScheduler();
+	//vTaskStartScheduler();
 
 	/* If all is well, the scheduler will now be running, and the following
 	line will never be reached.  If the following line does execute, then
@@ -62,6 +70,10 @@ void sf_main(void) {
 	a privileged mode (not user mode). */
 	for( ;; )
 		;
+}
+
+void vIMUFetchTask(void *pvParameters) {
+
 }
 
 void vGPSReceiveTask(void *pvParameters) {

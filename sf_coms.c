@@ -92,7 +92,7 @@ void sf_init_ints() {
             &xInterruptController);
 
     /* Connect IIC_1 device driver handler */
-    XScuGic_Connect(&xInterruptController, XPAR_XIICPS_0_INTR,
+    XScuGic_Connect(&xInterruptController, XPAR_XIICPS_1_INTR,
             (Xil_InterruptHandler) (XIicPs_MasterInterruptHandler),
             (void *)&xiic);
 
@@ -102,7 +102,7 @@ void sf_init_ints() {
             (void *)&xuart);
 
     /* Enable Interrupts for IIC_1 */
-    XScuGic_Enable(&xInterruptController, XPAR_XIICPS_0_INTR);
+    XScuGic_Enable(&xInterruptController, XPAR_XIICPS_1_INTR);
 
     /* Enable Interrupts for UART_0 */
     XScuGic_Enable(&xInterruptController, XPAR_XUARTPS_0_INTR);
