@@ -35,6 +35,9 @@ static FATFS fatfs;
 
 
 int sf_init_sdcard(FIL *fil, char *SD_File) {
+	(void) fil;
+	(void) SD_File;
+
     FRESULT Res;
     u32 BuffCnt;
     BYTE work[_MAX_SS]; //Work area for the FSYS
@@ -63,7 +66,7 @@ int sf_init_sdcard(FIL *fil, char *SD_File) {
     return XST_SUCCESS;
 }
 
-int sf_open_file(FIL *fil, char *SD_File) {}
+int sf_open_file(FIL *fil, char *SD_File) {
     FRESULT Res = f_open(fil, SD_File, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
 
     if (Res) {
@@ -140,7 +143,7 @@ int sf_test_file() {
     }
     
     //Write 4 bytes from "Test" to location 0, place how many bytes written into transferredBytes
-    Res = sf_write_file_location(&testFile, fileName, 4, &transferredBytes, 0); 
+    Res = sf_write_file_location(&testFile, filename, 4, &transferredBytes, 0);
 
     if (Res) {
         return Res;
