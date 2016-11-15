@@ -88,9 +88,6 @@
  *
  */
 
-/* To make things work (crosses fingers) */
-#define _USE_MKFS 1
-
 /* Standard includes. */
 #include <stdio.h>
 #include <limits.h>

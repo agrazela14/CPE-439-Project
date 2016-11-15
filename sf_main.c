@@ -11,26 +11,28 @@
 
 /* C lib includes */
 #include <string.h>
+#include <stdio.h>
 
 /* Sensor Fusion Project Includes */
 #include "sf_coms.h"
+#include "sf_imu.h"
+#include "sf_sdcard.h"
 
 /* temporary serial include */
 #include "serial.h"
 
-#define RECEIVE_BUFFER_SIZE 255
+#define RECEIVE_BUFFER_SIZE 256
 #define SENTENCE_NAM_LEN 6
-
-/* The following defines are there for convenience, and should be modified
- * to fit desired specifics of functionality
- */
 
 /* Priorities at which the tasks are created. */
 #define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 1 )
 #define		mainTASK_PRIORITY_IMU			( tskIDLE_PRIORITY + 2 )
 
-/* How to define time from ticks */
-//#define mainFREQUENCY_MS_1			( 420 / portTICK_PERIOD_MS )
+/* Quantum of time to fetch measurements from IMU */
+#define mainIMU_FETCH_FREQ			( 1000 / portTICK_PERIOD_MS )
+
+/* Time to wait between switching different modes in IMU */
+#define mainIMU_SWITCH_TIME			( 19 / portTICK_PERIOD_MS )
 
 /* Task Forward Declarations */
 void vGPSReceiveTask(void *pvParameters);
@@ -41,13 +43,16 @@ void sf_main(void) {
 
 	/* initialize instances of devices and their interrupt Handlers */
 	sf_init_coms();
+	sf_imu_init();
 
-	xTaskCreate( vGPSReceiveTask,					/* The function that implements the task. */
-				"GPS Receive and Parse", 			/* The text name assigned to the task - for debug only as it is not used by the kernel. */
-				4096, 			/* The size of the stack to allocate to the task. */
-				NULL, 								/* The parameter passed to the task - not used in this case. */
-				mainTASK_PRIORITY_GPS, 				/* The priority assigned to the task. */
-				NULL );								/* The task handle is not required, so NULL is passed. */
+
+	//xTaskCreate( vGPSReceiveTask,					/* The function that implements the task. */
+	//			"GPS Parse", 						/* The text name assigned to the task - for debug only as it is not used by the kernel. */
+	//			4096, 								/* The size of the stack to allocate to the task. */
+	//			NULL, 								/* The parameter passed to the task - not used in this case. */
+	//			mainTASK_PRIORITY_GPS, 				/* The priority assigned to the task. */
+	//			NULL );								/* The task handle is not required, so NULL is passed. */
+
 	//xTaskCreate( vIMUFetchTask,					/* The function that implements the task. */
 	//			"IMU Fetch", 						/* The text name assigned to the task - for debug only as it is not used by the kernel. */
 	//			4096, 								/* The size of the stack to allocate to the task. */
@@ -73,7 +78,25 @@ void sf_main(void) {
 }
 
 void vIMUFetchTask(void *pvParameters) {
+	(void) pvParameters;
+	char dataPrintBuff[256];
 
+	/* Initialise xNextWakeTime - this only needs to be done once. */
+	TickType_t xNextWakeTime = xTaskGetTickCount();
+
+	/* make sure the IMU has had enough time to switch out of config mode */
+	vTaskDelayUntil( &xNextWakeTime, mainIMU_SWITCH_TIME);
+
+	for( ;; )
+	{
+		/* This quantum of delay time will be a core of the dead reckoning algorithm */
+		vTaskDelayUntil( &xNextWakeTime, mainIMU_FETCH_FREQ );
+
+		u32 data = sf_imu_get_acc_z();
+
+		snprintf(dataPrintBuff, 256, "%d\r\n", data);
+		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+	}
 }
 
 void vGPSReceiveTask(void *pvParameters) {
