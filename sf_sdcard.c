@@ -40,14 +40,16 @@ int sf_init_sdcard(FIL *fil, char *SD_File) {
     
     //This is the way the documentation online says, xlinix disagrees
     //Res = f_mkfs("", FM_ANY, 0, work, sizeof work);
-
-    Res = f_mkfs("0:/", 0, 0);
+    
+    //The f_mkfs in xilinx doesn't follow the online version 
+    //Res = f_mkfs("0:/", 0, 0);
+    Res = f_mkfs(0, 0, 4*1024);
     
     if (Res) {
         return XST_FAILURE;
     }    
 
-    Res = f_mount(&fatfs, "", 0);
+    Res = f_mount(&fatfs, "0:/", 0);
 
     if (Res) {
         return XST_FAILURE;
@@ -62,7 +64,7 @@ int sf_init_sdcard(FIL *fil, char *SD_File) {
     return XST_SUCCESS;
 }
 
-int sf_open_file(FIL *fil, char *SD_File) {}
+int sf_open_file(FIL *fil, char *SD_File) {
     FRESULT Res = f_open(fil, SD_File, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
 
     if (Res) {
@@ -139,7 +141,7 @@ int sf_test_file() {
     }
     
     //Write 4 bytes from "Test" to location 0, place how many bytes written into transferredBytes
-    Res = sf_write_file_location(&testFile, fileName, 4, &transferredBytes, 0); 
+    Res = sf_write_file_location(&testFile, filename, 4, &transferredBytes, 0); 
 
     if (Res) {
         return Res;
