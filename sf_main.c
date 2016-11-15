@@ -26,7 +26,7 @@
  */
 
 /* Priorities at which the tasks are created. */
-#define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 2 )
+#define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 1 )
 //#define	mainTASK_PRIORITY_2			( tskIDLE_PRIORITY + 2 )
 
 /* How to define time from ticks */
@@ -35,19 +35,19 @@
 void vGPSReceiveTask(void *pvParameters);
 
 void sf_main(void) {
-	//vSerialPutString(NULL, (signed char *)"Hello, starting up...", 21);
+	vSerialPutString(NULL, (signed char *)"Hello, starting up...\n", 23);
 
 	/* initialize instances of devices and their interrupt Handlers */
 	sf_init_coms();
 
 	xTaskCreate( vGPSReceiveTask,					/* The function that implements the task. */
-				"GPSParse", 						/* The text name assigned to the task - for debug only as it is not used by the kernel. */
-				4096, 								/* The size of the stack to allocate to the task. */
+				"GPS Receive and Parse", 			/* The text name assigned to the task - for debug only as it is not used by the kernel. */
+				4096, 			/* The size of the stack to allocate to the task. */
 				NULL, 								/* The parameter passed to the task - not used in this case. */
 				mainTASK_PRIORITY_GPS, 				/* The priority assigned to the task. */
 				NULL );								/* The task handle is not required, so NULL is passed. */
 
-	//vSerialPutString(NULL, (signed char *)"Starting scheduler...", 21);
+	vSerialPutString(NULL, (signed char *)"Starting scheduler...\n", 23);
 
 	/* Start the tasks and timer running. */
 	vTaskStartScheduler();
@@ -68,31 +68,29 @@ void vGPSReceiveTask(void *pvParameters) {
 	(void) pvParameters; //to eliminate compiler warnings for nonuse
 	char recBuff[RECEIVE_BUFFER_SIZE], *buffPtr;
 	buffPtr = recBuff;
-	//vSerialPutString(NULL, (signed char *)"In task...", 9);
 
-	while(1) {
+	for(;;) {
 		sf_uart_receive(buffPtr, 1); /* Start interrupt-driven receive (does not poll wait) */
-		//xSemaphoreTake(uartRecDone, portMAX_DELAY); /* block until something received */
+		xSemaphoreTake(uartRecDone, portMAX_DELAY); /* block until something received */
 
 		/* Check for NMEA sentence start delimiter */
 		if (*buffPtr++ == '$') {
 			sf_uart_receive(buffPtr, SENTENCE_NAM_LEN); 	/* Start another receive for next part of */
-			//xSemaphoreTake(uartRecDone, portMAX_DELAY);	/* sentence, block until done */
+			xSemaphoreTake(uartRecDone, portMAX_DELAY);	/* sentence, block until done */
 
 			/* Check for correct sentence type and validity */
-			if (!strncmp(buffPtr, "GPRMC,", SENTENCE_NAM_LEN)) {
+			if (!strcmp(buffPtr, "GPRMC,")) {
 				buffPtr += SENTENCE_NAM_LEN;
 
 				/* Run through timestamp field */
 				do {
-					;
 					sf_uart_receive(buffPtr, 1);
 				} while (*buffPtr++ != ',');
 
 				/* Collect Validity bit char and check */
 				sf_uart_receive(buffPtr, 2);
 
-				if (*buffPtr == 'A' || *buffPtr == 'V') { /* 'A' is valid, 'V' is not */
+				if (*buffPtr == 'A') { /* 'A' is valid, 'V' is not */
 					buffPtr += 2;
 					char *fieldStart = buffPtr;
 					int fieldLength = 0;
@@ -149,15 +147,11 @@ void vGPSReceiveTask(void *pvParameters) {
 					sf_uart_receive(buffPtr, 2);
 					buffPtr += 2;
 
-					/* Receive ending chars */
-					sf_uart_receive(buffPtr, 2);
-					buffPtr += 2;
+					*buffPtr++ = NULL;
 
-					*buffPtr = NULL;
+					int gpsstrlen = ((int)(buffPtr - recBuff));
 
-					//int gpsstrlen = ((int)(buffPtr - recBuff));
-
-					vSerialPutString(NULL, (signed char *)recBuff, strlen(recBuff));
+					vSerialPutString(NULL, (signed char *)recBuff, gpsstrlen);
 				}
 			}
 		}

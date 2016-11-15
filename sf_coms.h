@@ -21,7 +21,7 @@ void sf_iic_receive(u8 *in, BaseType_t numBytes, u16 slaveAddr);
 
 u32 sf_uart_send(u8 *out, BaseType_t numBytes);
 
-void sf_uart_receive(char *in, BaseType_t numBytes);
+u32 sf_uart_receive(u8 *in, BaseType_t numBytes);
 
 extern SemaphoreHandle_t uartSendDone, uartRecDone;
 extern SemaphoreHandle_t iicSendDone, iicRecDone;
