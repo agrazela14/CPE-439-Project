@@ -182,11 +182,14 @@ void vGPSReceiveTask(void *pvParameters) {
 					sf_uart_receive(buffPtr, 2);
 					buffPtr += 2;
 
-					*buffPtr++ = NULL;
+					/* Receive Ending characters */
+					sf_uart_receive(buffPtr, 2);
+					buffPtr += 2;
 
-					int gpsstrlen = ((int)(buffPtr - recBuff));
+					/* terminate string */
+					*buffPtr = NULL;
 
-					vSerialPutString(NULL, (signed char *)recBuff, gpsstrlen);
+					vSerialPutString(NULL, (signed char *)recBuff, strlen(recBuff));
 				}
 			}
 		}
