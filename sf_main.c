@@ -204,6 +204,8 @@ void vGPSReceiveTask(void *pvParameters) {
 					buffPtr += 2;
 
 					/* terminate string */
+					*buffPtr++ = '\n';
+
 					*buffPtr = NULL;
 
 					vSerialPutString(NULL, (signed char *)recBuff, strlen(recBuff));

@@ -58,6 +58,8 @@ void IIC_Handler(void *callBackRef, u32 Event) {
         xSemaphoreGiveFromISR(iicSendDone, &xHigherPriorityTaskWoken);
         xSemaphoreGiveFromISR(iicSemaSend, &xHigherPriorityTaskWoken);
     }
+
+    portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 void UART_Handler(void *callBackRef, u32 Event, u32 EventData) {
@@ -219,7 +221,7 @@ void sf_init_uart() {
  * If a previous send is
  */
 void sf_iic_send(u8 *out, BaseType_t numBytes, u16 slaveAddr) {
-	xSemaphoreTake(iicSemaSend, portMAX_DELAY); //block on previous call to finish
+	//xSemaphoreTake(iicSemaSend, portMAX_DELAY); //block on previous call to finish
 
 	if(uxSemaphoreGetCount(iicSendDone)) //make sure external indicator cleared
 		xSemaphoreTake(iicSendDone, portMAX_DELAY); //shouldn't ever need to block...
@@ -228,7 +230,7 @@ void sf_iic_send(u8 *out, BaseType_t numBytes, u16 slaveAddr) {
 }
 
 void sf_iic_receive(u8 *in, BaseType_t numBytes, u16 slaveAddr) {
-	xSemaphoreTake(iicSemaRec, portMAX_DELAY); //block on previous call to finish
+	//xSemaphoreTake(iicSemaRec, portMAX_DELAY); //block on previous call to finish
 
 	if(uxSemaphoreGetCount(iicRecDone)) //make sure external indicator cleared
 		xSemaphoreTake(iicRecDone, portMAX_DELAY); //shouldn't ever need to block...
