@@ -127,7 +127,7 @@ void sf_gps_set_nmea_rate(u8 GLL, u8 RMC, u8 VTG, u8 GGA, u8 GSA, u8 GSV) {
     sprintf(ReservedBuf, "0,0,0,0,0,0,0,0,0,0,0,0,0");
     sprintf(preamble, "$PMTK314,");
     
-    sprintf(nmeaRateMessage, "%s%s%s%s%s%s%s*", preamble, GLLBuf, RMCBuf, VTGBuf, GSABuf, GSVBuf, ReservedBuf);
+    sprintf(nmeaRateMessage, "%s%s%s%s%s%s%s%s*", preamble, GLLBuf, RMCBuf, VTGBuf, GGABuf, GSABuf, GSVBuf, ReservedBuf);
     sf_gps_checksum_calc(checksumBuf, nmeaRateMessage);
 
     sprintf(nmeaRateMessage + (messagePreambleLength + 10 + nmeaRateReservedLength), "%s%s", checksumBuf, CRLFBuf); 
