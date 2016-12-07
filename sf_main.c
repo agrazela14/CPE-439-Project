@@ -17,16 +17,21 @@
 #include "sf_coms.h"
 #include "sf_imu.h"
 #include "sf_sdcard.h"
+#include "sf_gps.h"
+#include "sf_dma.h"
 
 /* temporary serial include */
 #include "serial.h"
 
 #define RECEIVE_BUFFER_SIZE 256
 #define SENTENCE_NAM_LEN 6
+#define SD_QUEUE_SIZE 16
 
 /* Priorities at which the tasks are created. */
-#define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 1 )
-#define		mainTASK_PRIORITY_IMU			( tskIDLE_PRIORITY + 2 )
+#define		mainTASK_PRIORITY_SD			( tskIDLE_PRIORITY + 1 )
+#define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 2 )
+#define		mainTASK_PRIORITY_IMU			( tskIDLE_PRIORITY + 3 )
+
 
 /* Quantum of time to fetch measurements from IMU */
 #define mainIMU_FETCH_FREQ			( 1000 / portTICK_PERIOD_MS )
@@ -37,6 +42,10 @@
 /* Task Forward Declarations */
 void vGPSReceiveTask(void *pvParameters);
 void vIMUFetchTask(void *pvParameters);
+void vSDWriteTask(void *pvParameters);
+
+/* Queue for writing finished GPS points out to SD card */
+static QueueHandle_t SDWriteQueue = NULL;
 
 void sf_main(void) {
 	/* initialize instances of devices and their interrupt Handlers */
@@ -45,25 +54,15 @@ void sf_main(void) {
 	/* Configure IMU */
 	sf_imu_init();
 
-	/* Test code for SD card
-	 * FRESULT Res;
-	Res = sf_init_sdcard();
-
-	if(Res) {
-		vSerialPutString(NULL, (signed char *)"Failure\r\n", strlen("Failure\r\n"));
-	}
+	/* Inititialize SD card & its receive queue
+	 * Commented out because it was stalling program initially */
+	/*int Res = sf_init_sdcard();
+	if(Res)
+		vSerialPutString(NULL, (signed char *)"Failed to open SD card\r\n", strlen("Failed to open SD card\r\n"));
 	else
-		vSerialPutString(NULL, (signed char *)"SUCCESS\r\n", strlen("SUCCESS\r\n"));
+		vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n"));
 
-	Res = sf_test_file();
-
-	if(Res) {
-		vSerialPutString(NULL, (signed char *)"Failure\r\n", strlen("Failure\r\n"));
-	}
-	else
-		vSerialPutString(NULL, (signed char *)"SUCCESS\r\n", strlen("SUCCESS\r\n"));
-	*/
-
+	SDWriteQueue = xQueueCreate( SD_QUEUE_SIZE , sizeof( gps_t )); */
 
 	xTaskCreate( vGPSReceiveTask,					// The function that implements the task.
 				"GPS Parse", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
@@ -77,6 +76,13 @@ void sf_main(void) {
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_IMU, 				// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
+
+	xTaskCreate( vSDWriteTask,						// The function that implements the task.
+				"SD Write", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
 	/* Start the tasks and timer running. */
@@ -94,6 +100,19 @@ void sf_main(void) {
 		;
 }
 
+void vSDWriteTask(void *pvParameters) {
+	(void) pvParameters;
+	gps_t toWrite;
+
+
+	for(;;) {
+		test_acc();
+		/* Block until something is received in queue to write out to file */
+		//xQueueReceive( SDWriteQueue, &toWrite, portMAX_DELAY );
+	}
+}
+
+/* right now just full of test stuff */
 void vIMUFetchTask(void *pvParameters) {
 	(void) pvParameters;
 	char dataPrintBuff[256];
@@ -109,13 +128,34 @@ void vIMUFetchTask(void *pvParameters) {
 		/* This quantum of delay time will be a core of the dead reckoning algorithm */
 		vTaskDelayUntil( &xNextWakeTime, mainIMU_FETCH_FREQ );
 
-		u32 data = sf_imu_get_acc_z();
+		u32 data = sf_imu_get_calib();
 
-		snprintf(dataPrintBuff, 256, "%d\r\n", data);
+		snprintf(dataPrintBuff, 256, "Calibration Status: %X\r\n", (int)data);
+		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+
+		data = sf_imu_get_heading();
+
+		snprintf(dataPrintBuff, 256, "Raw Heading: %d\r\n", (int)data);
+		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+
+		data = sf_imu_get_acc_z();
+
+		snprintf(dataPrintBuff, 256, "Z: %d\r\n", (int)data);
+		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+
+		data = sf_imu_get_acc_y();
+
+		snprintf(dataPrintBuff, 256, "Y: %d\r\n", (int)data);
+		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+
+		data = sf_imu_get_acc_x();
+
+		snprintf(dataPrintBuff, 256, "X: %d\r\n", (int)data);
 		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
 	}
 }
 
+/* right now just parses out and then prints something when valid */
 void vGPSReceiveTask(void *pvParameters) {
 	(void) pvParameters; //to eliminate compiler warnings for nonuse
 	char recBuff[RECEIVE_BUFFER_SIZE], *buffPtr;

@@ -202,8 +202,8 @@ int main( void )
 
 static void prvSetupHardware( void )
 {
-BaseType_t xStatus;
-XScuGic_Config *pxGICConfig;
+	BaseType_t xStatus;
+	XScuGic_Config *pxGICConfig;
 
 	/* Ensure no interrupts execute while the scheduler is in an inconsistent
 	state.  Interrupts are automatically enabled when the scheduler is
@@ -223,6 +223,14 @@ XScuGic_Config *pxGICConfig;
 	xStatus = XScuGic_CfgInitialize( &xInterruptController, pxGICConfig, pxGICConfig->CpuBaseAddress );
 	configASSERT( xStatus == XST_SUCCESS );
 	( void ) xStatus; /* Remove compiler warning if configASSERT() is not defined. */
+
+	/*
+	 * Connect the interrupt controller interrupt handler to the
+	 * hardware interrupt handling logic in the processor.
+	 */
+    Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_IRQ_INT,
+            (Xil_InterruptHandler)(XScuGic_InterruptHandler),
+            &xInterruptController);
 
 	/* Initialize communications */
 	xSerialPortInitMinimal(115200, 200);

@@ -116,14 +116,6 @@ void sf_init_coms() {
 void sf_init_ints() {
 	/* Interrupt controller driver assumed to be initialized already */
 
-	/*
-	 * Connect the interrupt controller interrupt handler to the
-	 * hardware interrupt handling logic in the processor.
-	 */
-    Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_IRQ_INT,
-            (Xil_InterruptHandler)(XScuGic_InterruptHandler),
-            &xInterruptController);
-
     /* Connect IIC_1 device driver handler */
     XScuGic_Connect(&xInterruptController, XPAR_XIICPS_1_INTR,
             (Xil_InterruptHandler) (XIicPs_MasterInterruptHandler),
@@ -139,8 +131,6 @@ void sf_init_ints() {
 
     /* Enable Interrupts for UART_0 */
     XScuGic_Enable(&xInterruptController, XPAR_XUARTPS_0_INTR);
-
-    Xil_ExceptionEnable();
 
     /* Set callback Handler for UART_0 */
     XUartPs_SetHandler(&xuart, UART_Handler, (void *)(&xuart));

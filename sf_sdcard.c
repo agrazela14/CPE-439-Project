@@ -53,7 +53,7 @@ int sf_init_sdcard() {
 
     if (Res) {
         return XST_FAILURE;
-    }    
+    }
     
     sdcardSendDone = xSemaphoreCreateBinary();
     sdcardRecvDone = xSemaphoreCreateBinary();
