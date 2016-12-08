@@ -6,7 +6,7 @@
  * values around easier */
 typedef struct gps_t {
 	float longitude;
-	float latittude;
+	float latitude;
 	float acc_long;
 	float acc_lat;
 } gps_t;
@@ -19,6 +19,16 @@ typedef struct gps_t {
  * Note that the passed compass bearing is (1 degree / 16 LSBs) and passed
  * accelerations are (1 m/s / 100 LSB) */
 void convert_acc(int compass_bearing, float acc_x, float acc_y, gps_t *gps);
+
+/*takes the string version of the latitude longitude from the gps, which is in degrees minutes seconds form
+  and turns it into some actual floating points, which are then put into the fields
+  gps->latitude
+  gps->longitude
+  Example of a string that might come in: 4807.038,N,01131.000,E
+  48 degree 7.038 minutes North
+  11 degree 31.000 minutes East
+*/
+void convert_lat_long(char *stringVers, gps_t *gps);
 
 /* The following lookup tables are for quick calculations of sin and cos,
  * down to a resolution of .25 degrees. Each entry is a step of .25 degrees,

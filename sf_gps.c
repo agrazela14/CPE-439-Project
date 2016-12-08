@@ -6,6 +6,11 @@
 /* 270 degrees in (1 degree / 4 LSB) */
 #define ANGLE_OFFSET 1080
 
+/*Latitude and Longitude for about where we are so we can translate degrees to meters in Lat and Long values */
+#define SLO_LATITUDE 35
+#define SLO_LONGITUDE -120 
+
+
 /* Takes the raw IMU compass bearing, x-axis linear acceleration, and
  * y-axis linear acceleration values and converts them into valid accelerations
  * in the longitudinal and latitudinal directions, placing them into their
@@ -42,6 +47,88 @@ void convert_acc(int compass_bearing, float acc_x, float acc_y, gps_t *gps) {
 	gps->acc_lat = lat_x_component + lat_y_component;
 	gps->acc_long = long_x_component + long_y_component;
 }
+
+/*takes the string version of the latitude longitude from the gps, which is in degrees minutes seconds form
+  and turns it into some actual floating points, which are then put into the fields
+  gps->latitude
+  gps->longitude
+  Example of a string that might come in: 4807.038,N,01131.000,E
+  48 degree 7.038 minutes North
+  11 degree 31.000 minutes East
+*/
+void convert_lat_long(char *stringVers, gps_t *gps) {
+    float latDegree;    
+    float longDegree;    
+    float latMinute;    
+    float longMinute;    
+    float latitude;
+    float longitude;
+
+
+    char NS;
+    char EW;
+    
+    //char[10] tempBuf; 
+    char[10] ptrLoc;
+
+    ptrLoc = stringVers;
+
+    snprintf(tempBuf, LAT_DEGREE_LEN, "%s\0", stringVers);
+    longDegree = atof(tempBuf);
+    stringVers += LONG_DEGREE_LEN;
+
+    snprintf(tempBuf, MINUTE_LEN, "%s\0", stringVers);
+    longMinute = atof(tempBuf);
+    stringVers += MINUTE_LEN + 2;
+
+    NS = *(ptrLoc++);
+
+    //Go forward till you reach the ., then back track 2 to get where the minutes start
+    /* This doesn't seem necessary, latitude degree will be 2 units, longitude 3
+    while (ptrLoc != '.') {
+        ptrLoc++;
+    }
+    ptrLoc -= 2;
+    snprintf(tempBuf, ptrLoc - stringVers, "%s", stringVers);
+    latDegree = atof(tempBuf);
+
+    stringVers = ptrLoc;
+    while (ptrLoc != ',') {
+        ptrLoc++;
+    }
+
+    snprintf(tempBuf, ptrLoc - stringVers, "%s", stringVers);
+    latMinute = atof(tempBuf);
+
+    ptrLoc++;
+    stringVers = ptrLoc;
+    */
+
+    //Now they're both at the first character of the longitude
+    snprintf(tempBuf, LONG_DEGREE_LEN, "%s\0", stringVers);
+    longDegree = atof(tempBuf);
+    stringVers += LONG_DEGREE_LEN;
+
+    snprintf(tempBuf, MINUTE_LEN, "%s\0", stringVers);
+    longMinute = atof(tempBuf);
+    stringVers += MINUTE_LEN + 2;
+
+    EW = *stringVers;
+    
+    latitude = latDegree + (latMinute / 60);  
+    longitude = longDegree + (longMinute / 60);  
+
+    if (NS == 'S') {
+        latitude = -latitude; 
+    }
+    if (EW == 'W') {
+        longitude = -longitude; 
+    }
+    
+    gps->latitude = latitude;
+    gps->longitude = longitude;
+}
+
 
 const float sin_LUT[LUT_SIZE] =
 {
