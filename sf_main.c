@@ -28,7 +28,7 @@
 #define SD_QUEUE_SIZE 16
 
 /* Priorities at which the tasks are created. */
-#define		mainTASK_PRIORITY_SD			( tskIDLE_PRIORITY + 1 )
+#define		mainTASK_PRIORITY_SD			( tskIDLE_PRIORITY + 4 )
 #define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 2 )
 #define		mainTASK_PRIORITY_IMU			( tskIDLE_PRIORITY + 3 )
 
@@ -101,12 +101,38 @@ void sf_main(void) {
 }
 
 void vSDWriteTask(void *pvParameters) {
+	char dataPrintBuff[256];
 	(void) pvParameters;
-	gps_t toWrite;
-
+	//gps_t toWrite;
 
 	for(;;) {
-		test_acc();
+		int whole, dec;
+
+		/* Announce TX */
+		vSerialPutString(NULL, (signed char *)"=\r\n", strlen("=\r\n"));
+
+		int i;
+		for (i = 0; i < TX_BUFFER_LENGTH; i++) {
+			sf_dma_TxBuffer[i] = i * 1.22;
+			whole = sf_dma_TxBuffer[i];
+			dec = ((sf_dma_TxBuffer[i] - whole) * 1000);
+			snprintf(dataPrintBuff, 256, "Tx[%d]= %d.%d\r\n", i, whole, dec);
+			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+		}
+
+		for (i = 0; i < RX_BUFFER_LENGTH; i++)
+			sf_dma_RxBuffer[i] = 0;
+
+		sf_dma_transmit();
+
+		/* Announce RX */
+		for (i = 0; i < RX_BUFFER_LENGTH; i++) {
+			whole = sf_dma_RxBuffer[i];
+			dec = ((sf_dma_RxBuffer[i] - whole) * 1000);
+			snprintf(dataPrintBuff, 256, "Rx[%d]= %d.%d\r\n", i, whole, dec);
+			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+		}
+
 		/* Block until something is received in queue to write out to file */
 		//xQueueReceive( SDWriteQueue, &toWrite, portMAX_DELAY );
 	}

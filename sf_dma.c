@@ -1,5 +1,3 @@
-/***************************** Include Files *********************************/
-
 #include "xaxidma.h"
 #include "xparameters.h"
 #include "xil_exception.h"
@@ -7,37 +5,56 @@
 #include "xscugic.h"
 #include "sf_dma.h"
 
-/************************** Constant Definitions *****************************/
+/* Timeout loop counter for reset */
+#define RESET_TIMEOUT_COUNTER	10000
+
+/* Instance of the XAxiDma */
+static XAxiDma AxiDma;
+
+/* Zynq interrupt controller instance (for setup) */
+extern XScuGic xInterruptController;
+
+/* The buffers for Transmitting and Receiving to the hardware accelerator,
+ * from the perspective of the caller. Fill Tx up, start transmit (blocks),
+ * and then read Rx! This is actually an offset pointer from the real
+ * buffer, read the comment over the offset declaration */
+float *sf_dma_TxBuffer;
+float *sf_dma_RxBuffer;
+
+/* DMA works consistently, but has incorrect values for the first 7 float
+ * transfers. We haven't had the time to resolve it, but we think it is an
+ * AXI timing issue. This is reliable behavior, however, and we are working
+ * around it by offsetting the start of the buffer that the caller uses
+ * by 7 float, so that to them the world is a happy place absent of pain */
+#define DMA_BUFFER_OFFSET 7
+
+/* Array length and the number of bytes to transfer */
+#define TX_ARRAY_LENGTH		(TX_BUFFER_LENGTH + DMA_BUFFER_OFFSET)
+#define RX_ARRAY_LENGTH		(RX_BUFFER_LENGTH + DMA_BUFFER_OFFSET)
+
+float real_tx_buffer[TX_ARRAY_LENGTH];
+float real_rx_buffer[RX_ARRAY_LENGTH];
+
+#define BYTES_TO_TRANSFER_TX	(4 * TX_ARRAY_LENGTH)
+#define BYTES_TO_TRANSFER_RX	(4 * RX_ARRAY_LENGTH)
 
 /*  Device hardware build related constants. */
-
 #define DMA_DEV_ID		XPAR_AXIDMA_0_DEVICE_ID
 
 #define RX_INTR_ID		XPAR_FABRIC_AXI_DMA_0_S2MM_INTROUT_INTR
 #define TX_INTR_ID		XPAR_FABRIC_AXI_DMA_0_MM2S_INTROUT_INTR
 
-#define INTC_DEVICE_ID          XPAR_SCUGIC_SINGLE_DEVICE_ID
+#define INTC_DEVICE_ID  XPAR_SCUGIC_SINGLE_DEVICE_ID
 
-#define INTC		XScuGic
+#define INTC			XScuGic
 #define INTC_HANDLER	XScuGic_InterruptHandler
 
+/* Flags interrupt handlers use to notify the application context the events. */
+volatile int TxDone;
+volatile int RxDone;
+volatile int Error;
 
-/* Timeout loop counter for reset */
-#define RESET_TIMEOUT_COUNTER	10000
-
-/* Array length and the number of bytes to transfer */
-//#define ARRAY_LENGTH		50
-#define TX_ARRAY_LENGTH		50
-#define RX_ARRAY_LENGTH		50
-
-#define BYTES_TO_TRANSFER_TX	4*TX_ARRAY_LENGTH
-#define BYTES_TO_TRANSFER_RX	4*RX_ARRAY_LENGTH
-
-/************************** Function Prototypes ******************************/
-#ifndef DEBUG
-extern void xil_printf(const char *format, ...);
-#endif
-
+/* Internal Function prototypes */
 static void TxIntrHandler(void *Callback);
 static void RxIntrHandler(void *Callback);
 
@@ -46,50 +63,13 @@ static int SetupIntrSystem(INTC * IntcInstancePtr,
 static void DisableIntrSystem(INTC * IntcInstancePtr,
 					u16 TxIntrId, u16 RxIntrId);
 
-/************************** Variable Definitions *****************************/
-/*
- * Device instance definitions
- */
-
-static XAxiDma AxiDma;		/* Instance of the XAxiDma */
-
-/*
- * Flags interrupt handlers use to notify the application context the events.
- */
-volatile int TxDone;
-volatile int RxDone;
-volatile int Error;
-
-float TxBuffer[TX_ARRAY_LENGTH];
-float RxBuffer[RX_ARRAY_LENGTH];
-
-/*****************************************************************************/
-/**
-*
-* Main function
-*
-* This function is the main entry of the interrupt test. It does the following:
-*	Set up the output terminal if UART16550 is in the hardware build
-*	Initialize the DMA engine
-*	Set up Tx and Rx channels
-*	Set up the interrupt system for the Tx and Rx interrupts
-*	Submit a transfer
-*	Wait for the transfer to finish
-*	Check transfer status
-*	Disable Tx and Rx interrupts
-*	Print test status and exit
-*
-* @param	None
-*
-* @return
-*		- XST_SUCCESS if example finishes successfully
-*		- XST_FAILURE if example fails.
-*
-* @note		None.
-*
-******************************************************************************/
-int test_acc(void)
+/* Initializes DMA engine. XST_SUCCESS on success, XST_FAILURE otherwise */
+int sf_init_dma(void)
 {
+	/* apply buffer offset */
+	sf_dma_TxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
+	sf_dma_RxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
+
 	char dataPrintBuff[256];
 	int Status;
 	XAxiDma_Config *Config;
@@ -133,39 +113,26 @@ int test_acc(void)
 	XAxiDma_IntrEnable(&AxiDma, XAXIDMA_IRQ_ALL_MASK,
 							XAXIDMA_DEVICE_TO_DMA);
 
+	return XST_SUCCESS;
+}
+
+
+int sf_dma_transmit() {
+	int Status;
 	/* Initialize flags before start transfer test  */
 	TxDone = 0;
 	RxDone = 0;
 	Error = 0;
 
-
-	for(i = 0; i < RX_ARRAY_LENGTH; i++)
-		TxBuffer[i] = i * 1.1;	// initialize RxBuffer with 0's
-
-	for(i = 0; i < RX_ARRAY_LENGTH; i++)
-		RxBuffer[i] = 0;	// initialize RxBuffer with 0's
-
-	int whole, dec;
-
-	/* Announce TX */
-	vSerialPutString(NULL, (signed char *)"=\r\n", strlen("=\r\n"));
-
-	for (i = 0; i < TX_ARRAY_LENGTH; i++) {
-		whole = TxBuffer[i];
-		dec = ((TxBuffer[i] - whole) * 1000);
-		snprintf(dataPrintBuff, 256, "Tx[%d]= %d.%d\r\n", i, whole, dec);
-		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
-	}
-
 	/* Flush the SrcBuffer before the DMA transfer, in case the Data Cache is enabled */
-	Xil_DCacheFlushRange((u32)TxBuffer, BYTES_TO_TRANSFER_TX);
+	Xil_DCacheFlushRange((u32)real_tx_buffer, BYTES_TO_TRANSFER_TX);
 
-	Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) TxBuffer, BYTES_TO_TRANSFER_TX, XAXIDMA_DMA_TO_DEVICE);
+	Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) real_tx_buffer, BYTES_TO_TRANSFER_TX, XAXIDMA_DMA_TO_DEVICE);
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
 
-	Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) RxBuffer, BYTES_TO_TRANSFER_RX, XAXIDMA_DEVICE_TO_DMA);
+	Status = XAxiDma_SimpleTransfer(&AxiDma,(u32) real_rx_buffer, BYTES_TO_TRANSFER_RX, XAXIDMA_DEVICE_TO_DMA);
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
@@ -174,54 +141,16 @@ int test_acc(void)
 	while (!TxDone && !RxDone && !Error) { /* NOP */ }
 
 	if (Error) {
-		snprintf(dataPrintBuff, 256, "Failed test transmit %s done, receive %s done\r\n", TxDone? "":" not", RxDone? "":" not");
-		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+		return XST_SUCCESS;
 	}
 
 	/* Invalidate the DestBuffer before checking the data, in case the Data Cache is enabled */
-	Xil_DCacheInvalidateRange((u32)RxBuffer, BYTES_TO_TRANSFER_RX);
-
-	/* Announce RX */
-	for (i = 0; i < RX_ARRAY_LENGTH; i++) {
-		whole = RxBuffer[i];
-		dec = ((RxBuffer[i] - whole) * 1000);
-		snprintf(dataPrintBuff, 256, "Rx[%d]= %d.%d\r\n", i, whole, dec);
-		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
-	}
-
-	// check received data
-	/*for(i = 0; i < ARRAY_LENGTH; i++) {
-		if(RxBuffer[i] != i+5) {
-			snprintf(dataPrintBuff, 256, "Error : RxBuffer[%d] = %d \r\n", i, RxBuffer[i]);
-			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
-		}
-		else {
-			snprintf(dataPrintBuff, 256, "RxBuffer[%d] = %d \r\n", i, RxBuffer[i]);
-			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
-		}
-	}*/
-	vSerialPutString(NULL, (signed char *)"==========\r\n", strlen("==========\r\n"));
-	vSerialPutString(NULL, (signed char *)"AXI DMA interrupt example test done\r\n", strlen("AXI DMA interrupt example test done\r\n"));
+	Xil_DCacheInvalidateRange((u32)real_rx_buffer, BYTES_TO_TRANSFER_RX);
 
 	return XST_SUCCESS;
 }
 
-/*****************************************************************************/
-/*
-*
-* This is the DMA TX Interrupt handler function.
-*
-* It gets the interrupt status from the hardware, acknowledges it, and if any
-* error happens, it resets the hardware. Otherwise, if a completion interrupt
-* is present, then sets the TxDone.flag
-*
-* @param	Callback is a pointer to TX channel of the DMA engine.
-*
-* @return	None.
-*
-* @note		None.
-*
-******************************************************************************/
+/* Tx interrupt handler function */
 static void TxIntrHandler(void *Callback)
 {
 
@@ -281,22 +210,7 @@ static void TxIntrHandler(void *Callback)
 	}
 }
 
-/*****************************************************************************/
-/*
-*
-* This is the DMA RX interrupt handler function
-*
-* It gets the interrupt status from the hardware, acknowledges it, and if any
-* error happens, it resets the hardware. Otherwise, if a completion interrupt
-* is present, then it sets the RxDone flag.
-*
-* @param	Callback is a pointer to RX channel of the DMA engine.
-*
-* @return	None.
-*
-* @note		None.
-*
-******************************************************************************/
+/* Rx interrupt handler function */
 static void RxIntrHandler(void *Callback)
 {
 	u32 IrqStatus;
@@ -352,24 +266,9 @@ static void RxIntrHandler(void *Callback)
 	}
 }
 
-/*****************************************************************************/
-/*
-*
-* This function setups the interrupt system so interrupts can occur for the
-* DMA, it assumes INTC component exists in the hardware system.
-*
-* @param	IntcInstancePtr is a pointer to the instance of the INTC.
-* @param	AxiDmaPtr is a pointer to the instance of the DMA engine
-* @param	TxIntrId is the TX channel Interrupt ID.
-* @param	RxIntrId is the RX channel Interrupt ID.
-*
-* @return
-*		- XST_SUCCESS if successful,
-*		- XST_FAILURE.if not succesful
-*
-* @note		None.
-*
-******************************************************************************/
+
+/* This function setups the interrupt system so interrupts can occur for the
+ * DMA, it assumes INTC component exists in the hardware system. */
 static int SetupIntrSystem(INTC * IntcInstancePtr,
 			   XAxiDma * AxiDmaPtr, u16 TxIntrId, u16 RxIntrId)
 {
@@ -378,11 +277,10 @@ static int SetupIntrSystem(INTC * IntcInstancePtr,
 	XScuGic_SetPriorityTriggerType(IntcInstancePtr, TxIntrId, 0xA0, 0x3);
 
 	XScuGic_SetPriorityTriggerType(IntcInstancePtr, RxIntrId, 0xA0, 0x3);
-	/*
-	 * Connect the device driver handler that will be called when an
+
+	 /* Connect the device driver handler that will be called when an
 	 * interrupt for the device occurs, the handler defined above performs
-	 * the specific interrupt processing for the device.
-	 */
+	 * the specific interrupt processing for the device. */
 	Status = XScuGic_Connect(IntcInstancePtr, TxIntrId,
 				(Xil_InterruptHandler)TxIntrHandler,
 				AxiDmaPtr);
@@ -400,32 +298,12 @@ static int SetupIntrSystem(INTC * IntcInstancePtr,
 	XScuGic_Enable(IntcInstancePtr, TxIntrId);
 	XScuGic_Enable(IntcInstancePtr, RxIntrId);
 
-	/* Enable interrupts from the hardware */
-
-	/*Xil_ExceptionInit();
-	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT,
-			(Xil_ExceptionHandler)INTC_HANDLER,
-			(void *)IntcInstancePtr); */
-
 	Xil_ExceptionEnable();
 
 	return XST_SUCCESS;
 }
 
-/*****************************************************************************/
-/**
-*
-* This function disables the interrupts for DMA engine.
-*
-* @param	IntcInstancePtr is the pointer to the INTC component instance
-* @param	TxIntrId is interrupt ID associated w/ DMA TX channel
-* @param	RxIntrId is interrupt ID associated w/ DMA RX channel
-*
-* @return	None.
-*
-* @note		None.
-*
-******************************************************************************/
+/* This function disables the interrupts for DMA engine. */
 static void DisableIntrSystem(INTC * IntcInstancePtr,
 					u16 TxIntrId, u16 RxIntrId)
 {
