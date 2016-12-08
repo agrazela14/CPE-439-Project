@@ -62,7 +62,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     char NS;
     char EW;
     
-    char[10] tempBuf; 
+    char tempBuf[10];
     //char ptrLoc[10];
 
     //ptrLoc = stringVers;
