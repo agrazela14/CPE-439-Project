@@ -13,6 +13,7 @@
 #include "xil_printf.h"
 #include "xil_cache.h"
 #include "ff.h"
+#include <stdio.h>
 #include <string.h>
 
 

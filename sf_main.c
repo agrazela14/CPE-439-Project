@@ -156,7 +156,33 @@ void sf_main(void) {
    IMU data comes in as an X or Y character, then the float value*/
 
 void vtestTask(void *pvParameters) {
+	for(;;) {
+		char dataPrintBuff[256];
+		sf_dma_TxBuffer[0] = 0;
+		sf_dma_TxBuffer[1] = 0;
+		sf_dma_TxBuffer[2] = 2.1;
+		sf_dma_TxBuffer[3] = 0.5;
+		sf_dma_TxBuffer[4] = 1069.3;
+		sf_dma_TxBuffer[5] = 30.0002;
+		sf_dma_TxBuffer[6] = 1.2;
+		sf_dma_TxBuffer[7] = 0.69;
+		sf_dma_TxBuffer[8] = 0.5;
 
+		int j;
+		for (j = 0; j < 9; j++) {
+			sf_dma_RxBuffer[j] = 0;
+		}
+
+		sf_dma_transceive();
+		int whole, dec, i;
+
+		for (i = 0; i < RX_BUFFER_LENGTH; i++) {
+			whole = sf_dma_RxBuffer[i];
+			dec = ((sf_dma_RxBuffer[i] - whole) * 100000);
+			snprintf(dataPrintBuff, 256, "Rx[%d]= %d.%d\r\n", i, whole, dec);
+			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+		}
+	}
 }
 
 void vDataProcessWriteTask(void *pvParameters) {
@@ -243,15 +269,15 @@ void vSDWriteTask(void *pvParameters) {
     for (;;) {
        xQueueReceive(SDWriteQueue, &gps, portMAX_DELAY);
        
-       *sf_dma_TxBuffer = gps->longitude; 
-       *(sf_dma_TxBuffer + 1) = gps->latitude; 
-       *(sf_dma_TxBuffer + 2) = gps->acc_long; 
-       *(sf_dma_TxBuffer + 3) = gps->acc_lat; 
-       *(sf_dma_TxBuffer + 4) = gps->cur_long_p; 
-       *(sf_dma_TxBuffer + 5) = gps->cur_lat_p; 
-       *(sf_dma_TxBuffer + 6) = gps->cur_long_v; 
-       *(sf_dma_TxBuffer + 7) = gps->cur_lat_v; 
-       *(sf_dma_TxBuffer + 8) = gps->timeslice; 
+       *sf_dma_TxBuffer = gps.longitude;
+       *(sf_dma_TxBuffer + 1) = gps.latitude;
+       *(sf_dma_TxBuffer + 2) = gps.acc_long;
+       *(sf_dma_TxBuffer + 3) = gps.acc_lat;
+       *(sf_dma_TxBuffer + 4) = gps.cur_long_p;
+       *(sf_dma_TxBuffer + 5) = gps.cur_lat_p;
+       *(sf_dma_TxBuffer + 6) = gps.cur_long_v;
+       *(sf_dma_TxBuffer + 7) = gps.cur_lat_v;
+       *(sf_dma_TxBuffer + 8) = gps.timeslice;
 
        sf_dma_transceive();
        
@@ -284,9 +310,9 @@ void vSDWriteTask(void *pvParameters) {
        }
        lt_v_dc = (lat_v - lt_v_wl) * MILLION; 
 
-
-       sprintf(dataPrintBuff, "Longitude: %d.%d | Latitude: %d.%d | Longitudinal Velocity: %d.%d | Latitudinal Velocity %d.%d\n"
+       sprintf(dataPrintBuff, "Longitude: %d.%d | Latitude: %d.%d | Longitudinal Velocity: %d.%d | Latitudinal Velocity %d.%d\n",
                lg_wl, lg_dc, lt_wl, lt_dc, lg_v_wl, lg_v_dc, lt_v_wl, lt_v_dc); 
+
        sf_sd_write_cur_loc(&datafile, (void *)dataPrintBuff, 256, &bytesWritten); 
         
        sprintf(plotPrintBuff, "%d.%d,%d.%d\n", lg_wl, lg_dc, lt_wl, lt_dc);
