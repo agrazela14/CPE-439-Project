@@ -81,7 +81,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
 
     NS = *(ptrLoc++);
     //Go forward till you reach the ., then back track 2 to get where the minutes start
-    /* This doesn't seem necessary, latitude degree will be 2 units, longitude 3
+    /* This doesn't seem necessary, latitude degree will be 2 units, longitude 3 */
     while (ptrLoc != '.') {
         ptrLoc++;
     }

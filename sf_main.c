@@ -84,7 +84,7 @@ void sf_main(void) {
 	if(Res)
 		vSerialPutString(NULL, (signed char *)"Failed to open SD card\r\n", strlen("Failed to open SD card\r\n"));
 	else
-		vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n"));
+		vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n")); */
 
 	xTaskCreate( vGPSReceiveTask,					// The function that implements the task.
 				"GPS Parse", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
