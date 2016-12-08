@@ -91,6 +91,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     if (NS == 'S') {
         latitude = -latitude; 
     }
+
     if (EW == 'W') {
         longitude = -longitude; 
     }

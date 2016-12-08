@@ -32,9 +32,10 @@
 /* Priorities at which the tasks are created. */
 #define 	mainTASK_PRIORITY_TEST			( tskIDLE_PRIORITY + 5 )
 #define     mainTASK_PRIORITY_SD            ( tskIDLE_PRIORITY + 4 )
-#define     mainTASK_PRIORITY_GPS           ( tskIDLE_PRIORITY + 2 )
+#define     mainTASK_PRIORITY_GPS           ( tskIDLE_PRIORITY + 3 )
 #define     mainTASK_PRIORITY_IMU           ( tskIDLE_PRIORITY + 4 )
 #define     mainTASK_PRIORITY_DATAPROC      ( tskIDLE_PRIORITY + 3 )
+#define 	mainTASK_PRIORITY_CALIB			( tskIDLE_PRIORITY + 6 )
 
 
 
@@ -54,21 +55,24 @@ void vIMUFetchTask(void *pvParameters);
 void vSDWriteTask(void *pvParameters);
 void vDataProcessWriteTask(void *pvParameters);
 void vtestTask(void *pvParameters);
+void calibrationTask(void *pvParameters);
 
 /* Queue for writing finished GPS points out to SD card */
 
 //Use these Queues to get the data we care about into a "data processing" task,
 //Then that data processing, which will also run the dma, has a queue out to the sd write task
-
 static QueueHandle_t GPSDataQueue = NULL;
 static QueueHandle_t IMUDataQueue = NULL;
 static QueueHandle_t SDWriteQueue = NULL;
 
+/* Used to stall the other data tasks until calibration has been sufficiently satisfied */
+SemaphoreHandle_t wakeGPSTask, wakeIMUTask;
+
 static FIL datafile;
-char const *filename = "datalog";
+#define filename "datalog"
 
 static FIL gps_plot_file;
-char const *gps_plot_filename = "plot.csv";
+#define gps_plot_filename "plot.csv"
 
 void sf_main(void) {
     /* initialize instances of devices and their interrupt Handlers */
@@ -80,17 +84,15 @@ void sf_main(void) {
 	/* Initialize DMA Engine */
 	sf_init_dma();
     
+	/* Create the queues for data passing between tasks */
     SDWriteQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(gps_t));
 	GPSDataQueue = xQueueCreate( mainQUEUE_LENGTH, GPS_QUEUE_SIZE);
     IMUDataQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(float));
 
-	/* Inititialize SD card & its receive queue
-	 * Commented out because it was stalling program initially */
-	/*int Res = sf_init_sdcard();
-	if(Res)
-		vSerialPutString(NULL, (signed char *)"Failed to open SD card\r\n", strlen("Failed to open SD card\r\n"));
-	else
-		vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n")); */
+    /* create semaphores for stalling data collection tasks (and thus most others
+     * All initialized to taken, which is good */
+    wakeGPSTask = xSemaphoreCreateBinary();
+    wakeIMUTask = xSemaphoreCreateBinary();
 
 	xTaskCreate( vGPSReceiveTask,					// The function that implements the task.
 				"GPS Parse", 						// The text name assigned to the task 
@@ -106,27 +108,33 @@ void sf_main(void) {
 				mainTASK_PRIORITY_IMU, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
-	xTaskCreate( vSDWriteTask,						// The function that implements the task.
-				"SD Write", 						// The text name assigned to the task
+	//xTaskCreate( vSDWriteTask,						// The function that implements the task.
+	//			"SD Write", 						// The text name assigned to the task
+	//			4096, 								// The size of the stack to allocate to the task.
+	//			NULL, 								// The parameter passed to the task - not used in this case.
+	//			mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
+	//			NULL );								// The task handle is not required, so NULL is passed.
+
+	//xTaskCreate(vDataProcessWriteTask,					// The function that implements the task.
+	//			"Process Data", 					// The text name assigned to the task 
+	//			4096, 								// The size of the stack to allocate to the task.
+	//			NULL, 								// The parameter passed to the task - not used in this case.
+	//			mainTASK_PRIORITY_DATAPROC, 		// The priority assigned to the task.
+	//			NULL );								// The task handle is not required, so NULL is passed.
+
+	//xTaskCreate(vtestTask,							// The function that implements the task.
+	//			"Test", 							// The text name assigned to the task
+	//			4096, 								// The size of the stack to allocate to the task.
+	//			NULL, 								// The parameter passed to the task - not used in this case.
+	//			mainTASK_PRIORITY_TEST, 			// The priority assigned to the task.
+	//			NULL );								// The task handle is not required, so NULL is passed.
+
+	xTaskCreate(calibrationTask,					// The function that implements the task.
+				"Calibration", 						// The text name assigned to the task .
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
-				mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
+				mainTASK_PRIORITY_CALIB, 			// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
-
-	xTaskCreate(vDataProcessWriteTask,					// The function that implements the task.
-				"Process Data", 					// The text name assigned to the task 
-				4096, 								// The size of the stack to allocate to the task.
-				NULL, 								// The parameter passed to the task - not used in this case.
-				mainTASK_PRIORITY_DATAPROC, 		// The priority assigned to the task.
-				NULL );								// The task handle is not required, so NULL is passed.
-
-	xTaskCreate(vtestTask,							// The function that implements the task.
-				"Test", 							// The text name assigned to the task 
-				4096, 								// The size of the stack to allocate to the task.
-				NULL, 								// The parameter passed to the task - not used in this case.
-				mainTASK_PRIORITY_TEST, 			// The priority assigned to the task.
-				NULL );								// The task handle is not required, so NULL is passed.
-
 
 	/* Start the tasks and timer running. */
 	vTaskStartScheduler();
@@ -144,12 +152,48 @@ void sf_main(void) {
 
 }
 
+void calibrationTask(void *pvParameters) {
+	(void) pvParameters;
+	char dataPrintBuff[256];
+	char dataRecBuff[256];
+	int calibrated = 0;
+
+    /* Initialise xNextWakeTime - this only needs to be done once. */
+    TickType_t xNextWakeTime = xTaskGetTickCount();
+
+	while(!calibrated) {
+		int res = xSerialGetChar(NULL, dataRecBuff, mainIMU_FETCH_FREQ);
+
+		/* any key stroke */
+        if(res == pdTRUE) {
+        	xSemaphoreGive(wakeIMUTask);
+        	xSemaphoreGive(wakeGPSTask);
+        	calibrated = 1;
+        }
+        else {
+			float data = sf_imu_get_calib();
+
+			snprintf(dataPrintBuff, 256, "Calibration Status: %X\r\n", (int)data);
+			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+
+			data = sf_imu_get_heading();
+
+			snprintf(dataPrintBuff, 256, "Raw Heading: %d degrees\r\n", (int)(data / 16));
+			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+        }
+	}
+
+	vTaskDelayUntil( &xNextWakeTime, portMAX_DELAY);
+
+}
 
 void vtestTask(void *pvParameters) {
+	(void) pvParameters;
 	for(;;) {
 		char dataPrintBuff[256];
-		sf_dma_TxBuffer[0] = 0;
-		sf_dma_TxBuffer[1] = 0;
+
+		sf_dma_TxBuffer[0] = 6.9;
+		sf_dma_TxBuffer[1] = 7.9;
 		sf_dma_TxBuffer[2] = 2.1;
 		sf_dma_TxBuffer[3] = 0.5;
 		sf_dma_TxBuffer[4] = 1069.3;
@@ -158,16 +202,25 @@ void vtestTask(void *pvParameters) {
 		sf_dma_TxBuffer[7] = 0.69;
 		sf_dma_TxBuffer[8] = 0.5;
 
+
 		int j;
-		for (j = 0; j < 9; j++) {
+		for(j = 9; j < 50; j++)
+			sf_dma_TxBuffer[j] = 6.9;
+
+
+		for (j = 0; j < 50; j++) {
 			sf_dma_RxBuffer[j] = 0;
 		}
 
-		sf_dma_transceive();
+		int res = sf_dma_transceive();
 		int whole, dec, i;
 
 		for (i = 0; i < RX_BUFFER_LENGTH; i++) {
-			whole = sf_dma_RxBuffer[i];
+			if (sf_dma_RxBuffer[i] > 1 || sf_dma_RxBuffer[i] < -1)
+				whole = sf_dma_RxBuffer[i];
+			else
+				whole = 0;
+
 			dec = ((sf_dma_RxBuffer[i] - whole) * 100000);
 			snprintf(dataPrintBuff, 256, "Rx[%d]= %d.%d\r\n", i, whole, dec);
 			vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
@@ -177,7 +230,6 @@ void vtestTask(void *pvParameters) {
 
 /* This task takes in values from both the GPS and IMU tasks, then uses the functions in sf_gps.c to make them usable floats
    Those floats are then provided to the DMA via Xilinx functions, gets the value out of it, then gives it to the sd writer
-   
    Values from GPS received as string in "degree minute second" form
    conversion out of this form is floatval = degree + minute/60 + second/3600
    N positive S negative (latitude)
@@ -207,7 +259,6 @@ void vDataProcessWriteTask(void *pvParameters) {
 
         //convert_lat_long(gpsrecv, &gps);
         convert_acc(heading, imuXAcc, imuYAcc, &gps);
-        
     }  
 }
 
@@ -261,11 +312,16 @@ void vSDWriteTask(void *pvParameters) {
     int bytesWritten;
 
     gps_t gps; 
-    
-    /* IIRC, there is a filesystem on the sd by default, but if not then we add this init call */
-    //sf_sd_init_sdcard();
-    sf_sd_open_file(&datafile, filename);
-    sf_sd_open_file(&gps_plot_file, gps_plot_filename);
+
+    int Res = sf_init_sdcard();
+
+	if(Res)
+		vSerialPutString(NULL, (signed char *)"Failed to open SD card\r\n", strlen("Failed to open SD card\r\n"));
+	else
+		vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n"));
+
+	sf_open_file(&datafile, filename);
+    sf_open_file(&gps_plot_file, gps_plot_filename);
 
     for (;;) {
        xQueueReceive(SDWriteQueue, &gps, portMAX_DELAY);
@@ -287,7 +343,7 @@ void vSDWriteTask(void *pvParameters) {
        long_v    = *(sf_dma_RxBuffer + 2); 
        lat_v     = *(sf_dma_RxBuffer + 3); 
        
-       sf_return_to_decimal_degree(*longitude, *latitude);
+       sf_return_to_decimal_degree(&longitude, &latitude);
         
        lg_wl = longitude;
        //make it positive for the decimal part
@@ -314,7 +370,7 @@ void vSDWriteTask(void *pvParameters) {
        sprintf(dataPrintBuff, "Longitude: %d.%d | Latitude: %d.%d | Longitudinal Velocity: %d.%d | Latitudinal Velocity %d.%d\n",
                lg_wl, lg_dc, lt_wl, lt_dc, lg_v_wl, lg_v_dc, lt_v_wl, lt_v_dc); 
 
-       sf_sd_write_cur_loc(&datafile, (void *)dataPrintBuff, 256, &bytesWritten); 
+       sf_write_file_cur_loc(&datafile, (void *)dataPrintBuff, 256, &bytesWritten);
         
        sprintf(plotPrintBuff, "%d.%d,%d.%d\n", lg_wl, lg_dc, lt_wl, lt_dc);
        sf_sd_write_cur_loc(&gps_plot_file, (void *)plotPrintBuff, 256, &bytesWritten); 
@@ -358,6 +414,7 @@ void vSDWriteTask(void *pvParameters) {
 void vIMUFetchTask(void *pvParameters) {
     (void) pvParameters;
     char dataPrintBuff[256];
+    float data;
 
     /* Initialise xNextWakeTime - this only needs to be done once. */
     TickType_t xNextWakeTime = xTaskGetTickCount();
@@ -367,37 +424,29 @@ void vIMUFetchTask(void *pvParameters) {
 
     for( ;; )
     {
-        /* This quantum of delay time will be a core of the dead reckoning algorithm */
-        vTaskDelayUntil( &xNextWakeTime, mainIMU_FETCH_FREQ );
+    	xSemaphoreTake(wakeIMUTask, portMAX_DELAY); /* will stall until enabled */
+    	xSemaphoreGive(wakeIMUTask);
 
-        u32 data = sf_imu_get_calib();
-
-        snprintf(dataPrintBuff, 256, "Calibration Status: %X\r\n", (int)data);
-        vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
-
-        data = sf_imu_get_heading();
-
-        snprintf(dataPrintBuff, 256, "Raw Heading: %d\r\n", (int)data);
-        vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
-
+    	vTaskDelayUntil( &xNextWakeTime, mainIMU_FETCH_FREQ);
         data = sf_imu_get_acc_z();
 
-        snprintf(dataPrintBuff, 256, "Z: %d\r\n", (int)data);
+        snprintf(dataPrintBuff, 256, "Z: %d\r\n", (int)(data));
         vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
 
         data = sf_imu_get_acc_y();
 
-        xQueueSend(IMUDataQueue, (void *)data, 0U); 
+        //xQueueSend(IMUDataQueue, &data, 0U);
 
         snprintf(dataPrintBuff, 256, "Y: %d\r\n", (int)data);
         vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
 
         data = sf_imu_get_acc_x();
 
-        xQueueSend(IMUDataQueue, (void *)data, 0U); 
+        //xQueueSend(IMUDataQueue, &data, 0U);
 
         snprintf(dataPrintBuff, 256, "X: %d\r\n", (int)data);
         vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
+
     }
 }
 
@@ -408,6 +457,9 @@ void vGPSReceiveTask(void *pvParameters) {
     buffPtr = recBuff;
 
     for(;;) {
+    	xSemaphoreTake(wakeGPSTask, portMAX_DELAY); /* will stall until enabled */
+    	xSemaphoreGive(wakeGPSTask);
+
         sf_uart_receive(buffPtr, 1); /* Start interrupt-driven receive (does not poll wait) */
         //xSemaphoreTake(uartRecDone, portMAX_DELAY); /* block until something received */
 

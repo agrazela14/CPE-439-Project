@@ -10,8 +10,8 @@
 #define LONG_DEGREE_LEN 3
 #define MINUTE_LEN 6
 
-#define DEGREE_LONG_TO_METER 90000.59 
-#define DEGREE_LAT_TO_METER 14568.628045 
+#define DEGREE_LONG_TO_METERS 82019.85
+#define DEGREE_LAT_TO_METERS 31780.69
 
 /* Struct for holding a gps position and long/lat accelerations.
  * meant to make passing all of these closely related and needed
