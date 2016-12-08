@@ -64,13 +64,12 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     float latitude;
     float longitude;
 
-
     char NS;
     char EW;
     
     //char[10] tempBuf; 
-    char[10] ptrLoc;
-
+    char ptrLoc[10];
+/*
     ptrLoc = stringVers;
 
     snprintf(tempBuf, LAT_DEGREE_LEN, "%s\0", stringVers);
@@ -82,7 +81,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     stringVers += MINUTE_LEN + 2;
 
     NS = *(ptrLoc++);
-
+*/
     //Go forward till you reach the ., then back track 2 to get where the minutes start
     /* This doesn't seem necessary, latitude degree will be 2 units, longitude 3
     while (ptrLoc != '.') {
@@ -103,7 +102,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     ptrLoc++;
     stringVers = ptrLoc;
     */
-
+/*
     //Now they're both at the first character of the longitude
     snprintf(tempBuf, LONG_DEGREE_LEN, "%s\0", stringVers);
     longDegree = atof(tempBuf);
@@ -124,7 +123,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     if (EW == 'W') {
         longitude = -longitude; 
     }
-    
+ */
     gps->latitude = latitude;
     gps->longitude = longitude;
 }

@@ -26,7 +26,7 @@ float *sf_dma_RxBuffer;
  * AXI timing issue. This is reliable behavior, however, and we are working
  * around it by offsetting the start of the buffer that the caller uses
  * by 7 float, so that to them the world is a happy place absent of pain */
-#define DMA_BUFFER_OFFSET 0
+#define DMA_BUFFER_OFFSET 7
 
 /* Array length and the number of bytes to transfer */
 #define TX_ARRAY_LENGTH		(TX_BUFFER_LENGTH + DMA_BUFFER_OFFSET)
@@ -64,11 +64,10 @@ static void DisableIntrSystem(INTC * IntcInstancePtr,
 					u16 TxIntrId, u16 RxIntrId);
 
 /* Initializes DMA engine. XST_SUCCESS on success, XST_FAILURE otherwise */
-int sf_init_dma(void)
-{
+int sf_init_dma(void) {
 	/* apply buffer offset */
 	sf_dma_TxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
-	sf_dma_RxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
+	sf_dma_RxBuffer = real_rx_buffer + DMA_BUFFER_OFFSET;
 
 	int Status;
 	XAxiDma_Config *Config;

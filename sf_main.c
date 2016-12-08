@@ -32,7 +32,7 @@
 #define		mainTASK_PRIORITY_SD			( tskIDLE_PRIORITY + 4 )
 #define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 2 )
 #define		mainTASK_PRIORITY_IMU			( tskIDLE_PRIORITY + 3 )
-#define		mainTASK_PRIORITY_DATAPROC		( tskIDLE_PRIORITY + 4 )
+#define		mainTASK_PRIORITY_DATAPROC		( tskIDLE_PRIORITY + 1 )
 
 
 /* Quantum of time to fetch measurements from IMU */
@@ -49,6 +49,7 @@
 void vGPSReceiveTask(void *pvParameters);
 void vIMUFetchTask(void *pvParameters);
 void vSDWriteTask(void *pvParameters);
+void vDataProcessWriteTask(void *pvParameters);
 
 /* Queue for writing finished GPS points out to SD card */
 
@@ -69,8 +70,8 @@ void sf_main(void) {
 	/* Initialize DMA Engine */
 	sf_init_dma();
     
-        GPSDataQueue = xQueueCreate( mainQUEUE_LENGTH, GPS_QUEUE_SIZE);
-        IMUDataQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(float));
+	GPSDataQueue = xQueueCreate( mainQUEUE_LENGTH, GPS_QUEUE_SIZE);
+    IMUDataQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(float));
 
 
 	/* Inititialize SD card & its receive queue
@@ -104,7 +105,7 @@ void sf_main(void) {
 				mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
-	xTaskCreate( vDataProcessTask,					// The function that implements the task.
+	xTaskCreate(vDataProcessWriteTask,					// The function that implements the task.
 				"Process Data", 					// The text name assigned to the task - for debug only as it is not used by the kernel.
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
@@ -138,25 +139,25 @@ void sf_main(void) {
    IMU data comes in as an X or Y character, then the float value*/
 
 void vDataProcessWriteTask(void *pvParameters) {
-    void (pvParamters);
+    (void) pvParameters;
     
     gps_t gps;
     float imuXAcc;
     float imuYAcc;
     int heading;
-    char[GPS_QUEUE_SIZE] gpsLatLong;
-    char[GPS_QUEUE_SIZE] gpsHeading;
+    char gpsLatLong[GPS_QUEUE_SIZE];
+    char gpsHeading[GPS_QUEUE_SIZE];
     
     
     for ( ;; ) {
-        xQueueRecieve(GPSDataQueue, gpsLatLong, portMAX_DELAY);  
-        xQueueRecieve(GPSDataQueue, gpsHeading, portMAX_DELAY);  
+        xQueueReceive(GPSDataQueue, gpsLatLong, portMAX_DELAY);
+        xQueueReceive(GPSDataQueue, gpsHeading, portMAX_DELAY);
         heading = atol(gpsHeading);
 
-        xQueueRecieve(IMUDataQueue, &imuYAcc, portMAX_DELAY);  
-        xQueueRecieve(IMUDataQueue, &imuXAcc, portMAX_DELAY);  
+        xQueueReceive(IMUDataQueue, &imuYAcc, portMAX_DELAY);
+        xQueueReceive(IMUDataQueue, &imuXAcc, portMAX_DELAY);
         
-        convert_lat_long(gpsrecv, &gps);
+        //convert_lat_long(gpsrecv, &gps);
         convert_acc(heading, imuXAcc, imuYAcc, &gps);
         
     }  
@@ -167,6 +168,7 @@ void vSDWriteTask(void *pvParameters) {
 	(void) pvParameters;
 	//gps_t toWrite;
 
+
 	for(;;) {
 		int whole, dec;
 
@@ -174,6 +176,7 @@ void vSDWriteTask(void *pvParameters) {
 		vSerialPutString(NULL, (signed char *)"=\r\n", strlen("=\r\n"));
 
 		int i;
+
 		for (i = 0; i < TX_BUFFER_LENGTH; i++) {
 			sf_dma_TxBuffer[i] = i * 1.22;
 			whole = sf_dma_TxBuffer[i];
