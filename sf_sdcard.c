@@ -73,6 +73,22 @@ int sf_open_file(FIL *fil, char *SD_File) {
     return XST_SUCCESS;
 }
     
+int sf_write_file_cur_loc(FIL *fil, void *SourceAddress, u32 BytesToWrite, u32 *NumBytesWritten) {
+    FRESULT Res = f_lseek(fil, SEEK_CUR);
+
+    if (Res) {
+        return XST_FAILURE;
+    }
+
+    Res = f_write(fil, SourceAddress, BytesToWrite, NumBytesWritten);
+
+    if (Res) {
+        return XST_FAILURE;
+    }
+
+    return XST_SUCCESS;
+
+}
 
 int sf_write_file_location(FIL *fil, void *SourceAddress, u32 BytesToWrite, u32 *NumBytesWritten, u32 location) {
     FRESULT Res = f_lseek(fil, location);

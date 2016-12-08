@@ -69,16 +69,16 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     char EW;
     
     //char[10] tempBuf; 
-    char[10] ptrLoc;
+    char ptrLoc[10];
 
     ptrLoc = stringVers;
 
     snprintf(tempBuf, LAT_DEGREE_LEN, "%s\0", stringVers);
-    longDegree = atof(tempBuf);
+    latDegree = atof(tempBuf);
     stringVers += LONG_DEGREE_LEN;
 
     snprintf(tempBuf, MINUTE_LEN, "%s\0", stringVers);
-    longMinute = atof(tempBuf);
+    latMinute = atof(tempBuf);
     stringVers += MINUTE_LEN + 2;
 
     NS = *(ptrLoc++);
