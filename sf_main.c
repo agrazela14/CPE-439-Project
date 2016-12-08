@@ -226,6 +226,8 @@ void vSDWriteTask(void *pvParameters) {
     float latitude;
     float long_v;
     float lat_v;
+    
+    int bytesWritten;
 
     gps_t gps; 
 
@@ -263,7 +265,7 @@ void vSDWriteTask(void *pvParameters) {
 
        sprintf(dataPrintBuff, "Longitude: %d.%d | Latitude: %d.%d | Longitudinal Velocity: %d.%d | Latitudinal Velocity %d.%d\n"
                lg_wl, lg_dc, lt_wl, lt_dc, lg_v_wl, lg_v_dc, lt_v_wl, lt_v_dc); 
-       sf_sd_write_cur_loc( 
+       sf_sd_write_cur_loc(&datafile, (void *)dataPrintBuff, 256, &bytesWritten); 
 
     }
 }
