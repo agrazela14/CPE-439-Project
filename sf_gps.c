@@ -117,11 +117,25 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     if (EW == 'W') {
         longitude = -longitude; 
     }
+
+    convert_degree_decimal_to_meter(&longitude, &latitude);
     
     gps->latitude = latitude;
     gps->longitude = longitude;
 }
 
+//DEGREE_LONG_TO_METERS
+//DEGREE_LAT_TO_METERS
+//helper function to make the long and lat meters which we can actually use
+void convert_degree_decimal_to_meter(float *longitude, float *latitude) {
+    *longitude = (*longitude) * DEGREE_LONG_TO_METERS; 
+    *latitude = (*latitude) * DEGREE_LAT_TO_METERS; 
+}
+
+void sf_return_to_decimal_degree(float *longitude, float *latitude) {
+    *longitude = (*longitude) / DEGREE_LONG_TO_METERS; 
+    *latitude = (*latitude) / DEGREE_LAT_TO_METERS; 
+}
 
 const float sin_LUT[LUT_SIZE] =
 {
