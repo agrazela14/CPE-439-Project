@@ -67,9 +67,10 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     char NS;
     char EW;
     
-    //char[10] tempBuf; 
-    char ptrLoc[10];
-    ptrLoc = stringVers;
+    char[10] tempBuf; 
+    //char ptrLoc[10];
+
+    //ptrLoc = stringVers;
 
     snprintf(tempBuf, LAT_DEGREE_LEN, "%s\0", stringVers);
     latDegree = atof(tempBuf);

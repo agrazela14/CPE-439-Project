@@ -62,6 +62,7 @@ static QueueHandle_t IMUDataQueue = NULL;
 static QueueHandle_t SDWriteQueue = NULL;
 
 static FIL datafile;
+char const *filename = "datalog";
 
 
 void sf_main(void) {
@@ -198,8 +199,24 @@ void vDataProcessWriteTask(void *pvParameters) {
 void vSDWriteTask(void *pvParameters) {
     char dataPrintBuff[256];
     (void) pvParameters;
+    int lg_wl;
+    int lg_dc;
+    int lt_wl;
+    int lt_dc;
+    int lg_v_wl;
+    int lg_v_dc;
+    int lt_v_wl;
+    int lt_v_dc;
+
+    float longitude;
+    float latitude;
+    float long_v;
+    float lat_v;
 
     gps_t gps; 
+
+    sf_sd_init_sdcard();
+    sf_sd_open_file(&datafile, filename);
 
     for (;;) {
        xQueueReceive(SDWriteQueue, &gps, portMAX_DELAY);
@@ -215,10 +232,24 @@ void vSDWriteTask(void *pvParameters) {
        *(sf_dma_TxBuffer + 8) = gps->timeslice; 
 
        sf_dma_transceive();
-        
+       
+       longitude = *(sf_dma_RxBuffer); 
+       latitude  = *(sf_dma_RxBuffer + 1); 
+       long_v    = *(sf_dma_RxBuffer + 2); 
+       lat_v     = *(sf_dma_RxBuffer + 3); 
+       
+       lg_wl = longitude;
+       lg_dc = longitude - lg_wl; 
+       lt_wl = latitude;
+       lt_dc = latitude - lt_wl; 
+       lg_v_wl = long_v;
+       lg_v_dc = long_v - lg_v_wl; 
+       lt_v_wl = lat_v;
+       lt_v_dc = lat_v - lt_v_wl; 
 
-
-
+       sprintf(dataPrintBuff, "Longitude: %d.%d | Latitude: %d.%d | Longitudinal Velocity: %d.%d | Latitudinal Velocity %d.%d\n"
+               lg_wl, lg_dc, lt_wl, lt_dc, lg_v_wl, lg_v_dc, lt_v_wl, lt_v_dc); 
+       sf_sd_write_cur_loc( 
 
     }
 }
