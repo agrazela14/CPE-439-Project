@@ -26,7 +26,7 @@ float *sf_dma_RxBuffer;
  * AXI timing issue. This is reliable behavior, however, and we are working
  * around it by offsetting the start of the buffer that the caller uses
  * by 7 float, so that to them the world is a happy place absent of pain */
-#define DMA_BUFFER_OFFSET 7
+#define DMA_BUFFER_OFFSET 0
 
 /* Array length and the number of bytes to transfer */
 #define TX_ARRAY_LENGTH		(TX_BUFFER_LENGTH + DMA_BUFFER_OFFSET)
@@ -70,10 +70,8 @@ int sf_init_dma(void)
 	sf_dma_TxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
 	sf_dma_RxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
 
-	char dataPrintBuff[256];
 	int Status;
 	XAxiDma_Config *Config;
-	u32 i;
 
 	Config = XAxiDma_LookupConfig(DMA_DEV_ID);
 	if (!Config) {
@@ -119,7 +117,8 @@ int sf_init_dma(void)
 
 int sf_dma_transmit() {
 	int Status;
-	/* Initialize flags before start transfer test  */
+
+	/* Initialize flags before start transfer */
 	TxDone = 0;
 	RxDone = 0;
 	Error = 0;
@@ -141,7 +140,7 @@ int sf_dma_transmit() {
 	while (!TxDone && !RxDone && !Error) { /* NOP */ }
 
 	if (Error) {
-		return XST_SUCCESS;
+		return XST_FAILURE;
 	}
 
 	/* Invalidate the DestBuffer before checking the data, in case the Data Cache is enabled */
@@ -153,7 +152,6 @@ int sf_dma_transmit() {
 /* Tx interrupt handler function */
 static void TxIntrHandler(void *Callback)
 {
-
 	u32 IrqStatus;
 	int TimeOut;
 	XAxiDma *AxiDmaInst = (XAxiDma *)Callback;

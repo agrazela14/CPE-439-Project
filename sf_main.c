@@ -54,6 +54,9 @@ void sf_main(void) {
 	/* Configure IMU */
 	sf_imu_init();
 
+	/* Initialize DMA Engine */
+	sf_init_dma();
+
 	/* Inititialize SD card & its receive queue
 	 * Commented out because it was stalling program initially */
 	/*int Res = sf_init_sdcard();
