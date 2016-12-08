@@ -35,6 +35,7 @@
 #define     mainTASK_PRIORITY_DATAPROC      ( tskIDLE_PRIORITY + 3 )
 
 
+
 /* Quantum of time to fetch measurements from IMU */
 #define mainIMU_FETCH_FREQ          ( 1000 / portTICK_PERIOD_MS )
 
@@ -49,6 +50,7 @@
 void vGPSReceiveTask(void *pvParameters);
 void vIMUFetchTask(void *pvParameters);
 void vSDWriteTask(void *pvParameters);
+void vDataProcessWriteTask(void *pvParameters);
 
 /* Queue for writing finished GPS points out to SD card */
 
@@ -70,61 +72,63 @@ void sf_main(void) {
     /* Configure IMU */
     sf_imu_init();
 
-    GPSDataQueue = xQueueCreate( mainQUEUE_LENGTH, GPS_QUEUE_SIZE);
-    IMUDataQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(float));
+	/* Initialize DMA Engine */
+	sf_init_dma();
+    
     SDWriteQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(gps_t));
+	GPSDataQueue = xQueueCreate( mainQUEUE_LENGTH, GPS_QUEUE_SIZE);
+    IMUDataQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(float));
 
-    /* Inititialize SD card & its receive queue
-     * Commented out because it was stalling program initially */
-    /*int Res = sf_init_sdcard();
-    if(Res)
-        vSerialPutString(NULL, (signed char *)"Failed to open SD card\r\n", strlen("Failed to open SD card\r\n"));
-    else
-        vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n"));
+	/* Inititialize SD card & its receive queue
+	 * Commented out because it was stalling program initially */
+	/*int Res = sf_init_sdcard();
+	if(Res)
+		vSerialPutString(NULL, (signed char *)"Failed to open SD card\r\n", strlen("Failed to open SD card\r\n"));
+	else
+		vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n"));
 
-    SDWriteQueue = xQueueCreate( SD_QUEUE_SIZE , sizeof( gps_t )); */
+	xTaskCreate( vGPSReceiveTask,					// The function that implements the task.
+				"GPS Parse", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_GPS, 				// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
 
-    xTaskCreate( vGPSReceiveTask,                   // The function that implements the task.
-                "GPS Parse",                        // The text name assigned to the task - for debug only as it is not used by the kernel.
-                4096,                               // The size of the stack to allocate to the task.
-                NULL,                               // The parameter passed to the task - not used in this case.
-                mainTASK_PRIORITY_GPS,              // The priority assigned to the task.
-                NULL );                             // The task handle is not required, so NULL is passed.
+	xTaskCreate( vIMUFetchTask,						// The function that implements the task.
+				"IMU Fetch", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_IMU, 				// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
 
-    xTaskCreate( vIMUFetchTask,                     // The function that implements the task.
-                "IMU Fetch",                        // The text name assigned to the task - for debug only as it is not used by the kernel.
-                4096,                               // The size of the stack to allocate to the task.
-                NULL,                               // The parameter passed to the task - not used in this case.
-                mainTASK_PRIORITY_IMU,              // The priority assigned to the task.
-                NULL );                             // The task handle is not required, so NULL is passed.
+	xTaskCreate( vSDWriteTask,						// The function that implements the task.
+				"SD Write", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
 
-    xTaskCreate( vSDWriteTask,                      // The function that implements the task.
-                "SD Write",                         // The text name assigned to the task - for debug only as it is not used by the kernel.
-                4096,                               // The size of the stack to allocate to the task.
-                NULL,                               // The parameter passed to the task - not used in this case.
-                mainTASK_PRIORITY_SD,               // The priority assigned to the task.
-                NULL );                             // The task handle is not required, so NULL is passed.
+	xTaskCreate(vDataProcessWriteTask,					// The function that implements the task.
+				"Process Data", 					// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_DATAPROC, 		// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
 
-    xTaskCreate( vDataProcessTask,                  // The function that implements the task.
-                "Process Data",                     // The text name assigned to the task - for debug only as it is not used by the kernel.
-                4096,                               // The size of the stack to allocate to the task.
-                NULL,                               // The parameter passed to the task - not used in this case.
-                mainTASK_PRIORITY_DATAPROC,         // The priority assigned to the task.
-                NULL );                             // The task handle is not required, so NULL is passed.
+	/* Start the tasks and timer running. */
+	vTaskStartScheduler();
 
-    /* Start the tasks and timer running. */
-    vTaskStartScheduler();
+	/* If all is well, the scheduler will now be running, and the following
+	line will never be reached.  If the following line does execute, then
+	there was either insufficient FreeRTOS heap memory available for the idle
+	and/or timer tasks to be created, or vTaskStartScheduler() was called from
+	User mode.  See the memory management section on the FreeRTOS web site for
+	more details on the FreeRTOS heap http://www.freertos.org/a00111.html.  The
+	mode from which main() is called is set in the C start up code and must be
+	a privileged mode (not user mode). */
+	for( ;; )
+		;
 
-    /* If all is well, the scheduler will now be running, and the following
-    line will never be reached.  If the following line does execute, then
-    there was either insufficient FreeRTOS heap memory available for the idle
-    and/or timer tasks to be created, or vTaskStartScheduler() was called from
-    User mode.  See the memory management section on the FreeRTOS web site for
-    more details on the FreeRTOS heap http://www.freertos.org/a00111.html.  The
-    mode from which main() is called is set in the C start up code and must be
-    a privileged mode (not user mode). */
-    for( ;; )
-        ;
 }
 
 /* This task takes in values from both the GPS and IMU tasks, then uses the functions in sf_gps.c to make them usable floats
@@ -139,12 +143,13 @@ void sf_main(void) {
    IMU data comes in as an X or Y character, then the float value*/
 
 void vDataProcessWriteTask(void *pvParameters) {
-    void (pvParamters);
+    (void) pvParameters;
     
     gps_t gps;
     float imuXAcc;
     float imuYAcc;
     int heading;
+
     char gpsLatLong [GPS_QUEUE_SIZE];
     char gpsHeading [GPS_QUEUE_SIZE];
     
@@ -156,8 +161,8 @@ void vDataProcessWriteTask(void *pvParameters) {
 
         xQueueReceive(IMUDataQueue, &imuYAcc, portMAX_DELAY);  
         xQueueReceive(IMUDataQueue, &imuXAcc, portMAX_DELAY);  
-        
-        convert_lat_long(gpsrecv, &gps);
+
+        //convert_lat_long(gpsrecv, &gps);
         convert_acc(heading, imuXAcc, imuYAcc, &gps);
         
     }  

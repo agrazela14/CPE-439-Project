@@ -64,16 +64,13 @@ static void DisableIntrSystem(INTC * IntcInstancePtr,
 					u16 TxIntrId, u16 RxIntrId);
 
 /* Initializes DMA engine. XST_SUCCESS on success, XST_FAILURE otherwise */
-int sf_init_dma(void)
-{
+int sf_init_dma(void) {
 	/* apply buffer offset */
 	sf_dma_TxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
-	sf_dma_RxBuffer = real_tx_buffer + DMA_BUFFER_OFFSET;
+	sf_dma_RxBuffer = real_rx_buffer + DMA_BUFFER_OFFSET;
 
-	char dataPrintBuff[256];
 	int Status;
 	XAxiDma_Config *Config;
-	u32 i;
 
 	Config = XAxiDma_LookupConfig(DMA_DEV_ID);
 	if (!Config) {
@@ -119,7 +116,8 @@ int sf_init_dma(void)
 
 int sf_dma_transceive() {
 	int Status;
-	/* Initialize flags before start transfer test  */
+
+	/* Initialize flags before start transfer */
 	TxDone = 0;
 	RxDone = 0;
 	Error = 0;
@@ -141,7 +139,7 @@ int sf_dma_transceive() {
 	while (!TxDone && !RxDone && !Error) { /* NOP */ }
 
 	if (Error) {
-		return XST_SUCCESS;
+		return XST_FAILURE;
 	}
 
 	/* Invalidate the DestBuffer before checking the data, in case the Data Cache is enabled */
@@ -153,7 +151,6 @@ int sf_dma_transceive() {
 /* Tx interrupt handler function */
 static void TxIntrHandler(void *Callback)
 {
-
 	u32 IrqStatus;
 	int TimeOut;
 	XAxiDma *AxiDmaInst = (XAxiDma *)Callback;
