@@ -6,6 +6,10 @@
 #define GPS_START_LONGITUDE -120.66176464
 #define GPS_START_LATITUDE 35.30080247 
 
+#define LAT_DEGREE_LENGTH 2
+#define LONG_DEGREE_LENGTH 3
+#define MINUTE_LENGTH 6
+
 /* Struct for holding a gps position and long/lat accelerations.
  * meant to make passing all of these closely related and needed
  * values around easier */
