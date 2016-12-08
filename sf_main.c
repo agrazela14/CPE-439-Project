@@ -27,6 +27,7 @@
 #define SENTENCE_NAM_LEN 6
 #define SD_QUEUE_SIZE 16
 #define GPS_QUEUE_SIZE 64 
+#define MILLION 100000
 
 /* Priorities at which the tasks are created. */
 #define 	mainTASK_PRIORITY_TEST			( tskIDLE_PRIORITY + 5 )
@@ -66,6 +67,8 @@ static QueueHandle_t SDWriteQueue = NULL;
 static FIL datafile;
 char const *filename = "datalog";
 
+static FIL gps_plot_file;
+char const *gps_plot_filename = "plot.csv";
 
 void sf_main(void) {
     /* initialize instances of devices and their interrupt Handlers */
@@ -238,6 +241,8 @@ void vDataProcessWriteTask(void *pvParameters) {
 
 void vSDWriteTask(void *pvParameters) {
     char dataPrintBuff[256];
+    char plotPrintBuff[256];
+
     (void) pvParameters;
     int lg_wl;
     int lg_dc;
@@ -257,8 +262,9 @@ void vSDWriteTask(void *pvParameters) {
 
     gps_t gps; 
 
-    sf_init_sdcard();
-    sf_open_file(&datafile, filename);
+    sf_sd_init_sdcard();
+    sf_sd_open_file(&datafile, filename);
+    sf_sd_open_file(&gps_plot_file, gps_plot_filename);
 
     for (;;) {
        xQueueReceive(SDWriteQueue, &gps, portMAX_DELAY);
@@ -280,18 +286,23 @@ void vSDWriteTask(void *pvParameters) {
        long_v    = *(sf_dma_RxBuffer + 2); 
        lat_v     = *(sf_dma_RxBuffer + 3); 
        
+       sf_return_to_decimal_degree(*longitude, *latitude);
+        
        lg_wl = longitude;
-       lg_dc = longitude - lg_wl; 
+       lg_dc = (longitude - lg_wl) * MILLION; 
        lt_wl = latitude;
-       lt_dc = latitude - lt_wl; 
+       lt_dc = (latitude - lt_wl) * MILLION; 
        lg_v_wl = long_v;
-       lg_v_dc = long_v - lg_v_wl; 
+       lg_v_dc = (long_v - lg_v_wl) * MILLION; 
        lt_v_wl = lat_v;
-       lt_v_dc = lat_v - lt_v_wl; 
+       lt_v_dc = (lat_v - lt_v_wl) * MILLION; 
 
        sprintf(dataPrintBuff, "Longitude: %d.%d | Latitude: %d.%d | Longitudinal Velocity: %d.%d | Latitudinal Velocity %d.%d\n",
                lg_wl, lg_dc, lt_wl, lt_dc, lg_v_wl, lg_v_dc, lt_v_wl, lt_v_dc); 
-       sf_write_file_cur_loc(&datafile, (void *)dataPrintBuff, 256, &bytesWritten);
+
+       sf_sd_write_cur_loc(&datafile, (void *)dataPrintBuff, 256, &bytesWritten); 
+        
+       sprintf(plotPrintBuff, "%d.%d,%d.%d\n", lg_wl, lg_dc, lt_wl, lt_dc);
 
     }
 }

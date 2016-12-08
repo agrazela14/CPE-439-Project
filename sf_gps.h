@@ -10,6 +10,9 @@
 #define LONG_DEGREE_LEN 3
 #define MINUTE_LEN 6
 
+#define DEGREE_LONG_TO_METER 90000.59 
+#define DEGREE_LAT_TO_METER 14568.628045 
+
 /* Struct for holding a gps position and long/lat accelerations.
  * meant to make passing all of these closely related and needed
  * values around easier */
@@ -43,6 +46,11 @@ void convert_acc(int compass_bearing, float acc_x, float acc_y, gps_t *gps);
   11 degree 31.000 minutes East
 */
 void convert_lat_long(char *stringVers, gps_t *gps);
+
+//Helper functions
+void convert_degree_decimal_to_meter(float *longitude, float *latitude);
+
+void sf_return_to_decimal_degree(float *longitude, float *latitude); 
 
 /* The following lookup tables are for quick calculations of sin and cos,
  * down to a resolution of .25 degrees. Each entry is a step of .25 degrees,

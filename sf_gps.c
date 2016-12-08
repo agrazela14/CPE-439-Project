@@ -6,11 +6,6 @@
 /* 270 degrees in (1 degree / 4 LSB) */
 #define ANGLE_OFFSET 1080
 
-/*Latitude and Longitude for about where we are so we can translate degrees to meters in Lat and Long values */
-#define SLO_LATITUDE 35
-#define SLO_LONGITUDE -120 
-
-
 /* Takes the raw IMU compass bearing, x-axis linear acceleration, and
  * y-axis linear acceleration values and converts them into valid accelerations
  * in the longitudinal and latitudinal directions, placing them into their
@@ -68,9 +63,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     char EW;
     
     char tempBuf[10];
- /*   char ptrLoc;
 
-    //ptrLoc = stringVers;
 
     snprintf(tempBuf, LAT_DEGREE_LEN, "%s\0", stringVers);
     latDegree = atof(tempBuf);
@@ -80,26 +73,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     latMinute = atof(tempBuf);
     stringVers += MINUTE_LEN + 2;
 
-    NS = *(ptrLoc++); */
-    //Go forward till you reach the ., then back track 2 to get where the minutes start
-    /* This doesn't seem necessary, latitude degree will be 2 units, longitude 3 */
-  /*  while (ptrLoc != '.') {
-        ptrLoc++;
-    }*/
-   /* ptrLoc -= 2;
-    snprintf(tempBuf, ptrLoc - stringVers, "%s", stringVers);
-    latDegree = atof(tempBuf);
-
-    stringVers = ptrLoc;
-    while (ptrLoc != ',') {
-        ptrLoc++;
-    }
-
-    snprintf(tempBuf, ptrLoc - stringVers, "%s", stringVers);
-    latMinute = atof(tempBuf);
-
-    ptrLoc++;
-    stringVers = ptrLoc;
+    NS = *(stringVers++);
     
     //Now they're both at the first character of the longitude
     snprintf(tempBuf, LONG_DEGREE_LEN, "%s\0", stringVers);
@@ -110,7 +84,7 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     longMinute = atof(tempBuf);
     stringVers += MINUTE_LEN + 2;
 
-    EW = *stringVers;*/
+    EW = *stringVers;
     
     latitude = latDegree + (latMinute / 60);  
     longitude = longDegree + (longMinute / 60);  
@@ -121,12 +95,26 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     if (EW == 'W') {
         longitude = -longitude; 
     }
+
+    convert_degree_decimal_to_meter(&longitude, &latitude);
     
     gps->latitude = latitude;
     gps->longitude = longitude;
 
 }
 
+//DEGREE_LONG_TO_METERS
+//DEGREE_LAT_TO_METERS
+//helper function to make the long and lat meters which we can actually use
+void convert_degree_decimal_to_meter(float *longitude, float *latitude) {
+    *longitude = (*longitude) * DEGREE_LONG_TO_METERS; 
+    *latitude = (*latitude) * DEGREE_LAT_TO_METERS; 
+}
+
+void sf_return_to_decimal_degree(float *longitude, float *latitude) {
+    *longitude = (*longitude) / DEGREE_LONG_TO_METERS; 
+    *latitude = (*latitude) / DEGREE_LAT_TO_METERS; 
+}
 
 const float sin_LUT[LUT_SIZE] =
 {
