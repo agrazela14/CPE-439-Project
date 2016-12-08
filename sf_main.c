@@ -261,8 +261,9 @@ void vSDWriteTask(void *pvParameters) {
     int bytesWritten;
 
     gps_t gps; 
-
-    sf_sd_init_sdcard();
+    
+    /* IIRC, there is a filesystem on the sd by default, but if not then we add this init call */
+    //sf_sd_init_sdcard();
     sf_sd_open_file(&datafile, filename);
     sf_sd_open_file(&gps_plot_file, gps_plot_filename);
 
