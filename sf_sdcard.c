@@ -34,6 +34,8 @@ static FATFS fatfs;
 
 #define TEST 7
 
+/* This function is meant to be called before any of the other ones in this library as it sets up the
+   FAT file system on the sd_card, which then allows files to be made on it */ 
 
 int sf_init_sdcard() {
     //This is the way the documentation online says, xlinix disagrees
@@ -41,15 +43,10 @@ int sf_init_sdcard() {
     FRESULT Res;
     
     //The f_mkfs in xilinx doesn't follow the online version 
-    //I also Don't know if we need mkfs, it may already have one
+    //I also don't know if we need mkfs, it may already have one
     //Res = f_mkfs("0:/", 0, 0);
     //Res = f_mkfs(0, 0, 4*1024);
     
-    //if (Res) {
-    //   return XST_FAILURE;
-    //}
-
-    //Res = f_mount(0, &fatfs);
     Res = f_mount(&fatfs, "0:/", 0);
 
     if (Res) {
@@ -65,6 +62,9 @@ int sf_init_sdcard() {
     return XST_SUCCESS;
 }
 
+/* Creates and opens a file of the specified name. Called with the FA_CREATE_ALWAYS parameter, so it will overwrite and delete
+   Existing files, which usually means files from previous runs, which is fine */
+
 int sf_open_file(FIL *fil, char *SD_File) {
     FRESULT Res = f_open(fil, SD_File, FA_CREATE_ALWAYS | FA_WRITE | FA_READ);
 
@@ -73,6 +73,10 @@ int sf_open_file(FIL *fil, char *SD_File) {
     }    
     return XST_SUCCESS;
 }
+
+/* Writes from the void pointer SourceAddress into the file at it's current position.
+   Writes bytes equal in number to "BytesToWrite" if possible, and records how many were written into NumBytesWritten
+*/
     
 int sf_write_file_cur_loc(FIL *fil, void *SourceAddress, u32 BytesToWrite, u32 *NumBytesWritten) {
     FRESULT Res = f_lseek(fil, SEEK_CUR);
@@ -91,6 +95,10 @@ int sf_write_file_cur_loc(FIL *fil, void *SourceAddress, u32 BytesToWrite, u32 *
 
 }
 
+/* Writes from the void pointer SourceAddress into the file at a position specified by location 
+   Writes bytes equal in number to "BytesToWrite" if possible, and records how many were written into NumBytesWritten
+*/
+
 int sf_write_file_location(FIL *fil, void *SourceAddress, u32 BytesToWrite, u32 *NumBytesWritten, u32 location) {
     FRESULT Res = f_lseek(fil, location);
 
@@ -106,6 +114,8 @@ int sf_write_file_location(FIL *fil, void *SourceAddress, u32 BytesToWrite, u32 
 
     return XST_SUCCESS;
 }
+
+/* Reads the file at a given location */
 
 int sf_read_file_location(FIL *fil, void *DestinationAddress, u32 ReadSize, u32 *NumBytesRead, u32 location) {
     FRESULT Res = f_lseek(fil, location);
@@ -133,7 +143,8 @@ int sf_close_file(FIL *fil) {
     return XST_SUCCESS;
 }
 
-//I think this is the right way to do this
+/* Unmounts the file system when you are done with it */
+
 int sf_unregister_work_area() {
     FRESULT Res = f_mount(NULL, "0:/", 0);
     

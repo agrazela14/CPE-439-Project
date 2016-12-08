@@ -75,7 +75,6 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
 
     NS = *(stringVers++);
     
-    //Now they're both at the first character of the longitude
     snprintf(tempBuf, LONG_DEGREE_LEN, "%s\0", stringVers);
     longDegree = atof(tempBuf);
     stringVers += LONG_DEGREE_LEN;
@@ -103,14 +102,13 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
 
 }
 
-//DEGREE_LONG_TO_METERS
-//DEGREE_LAT_TO_METERS
 //helper function to make the long and lat meters which we can actually use
 void convert_degree_decimal_to_meter(float *longitude, float *latitude) {
     *longitude = (*longitude) * DEGREE_LONG_TO_METERS; 
     *latitude = (*latitude) * DEGREE_LAT_TO_METERS; 
 }
 
+//helper function that changes back to degree decimal for displaying
 void sf_return_to_decimal_degree(float *longitude, float *latitude) {
     *longitude = (*longitude) / DEGREE_LONG_TO_METERS; 
     *latitude = (*latitude) / DEGREE_LAT_TO_METERS; 

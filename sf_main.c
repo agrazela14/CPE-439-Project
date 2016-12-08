@@ -93,35 +93,35 @@ void sf_main(void) {
 		vSerialPutString(NULL, (signed char *)"SD card opened\r\n", strlen("SD card opened\r\n")); */
 
 	xTaskCreate( vGPSReceiveTask,					// The function that implements the task.
-				"GPS Parse", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				"GPS Parse", 						// The text name assigned to the task 
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_GPS, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
 	xTaskCreate( vIMUFetchTask,						// The function that implements the task.
-				"IMU Fetch", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				"IMU Fetch", 						// The text name assigned to the task 
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_IMU, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
 	xTaskCreate( vSDWriteTask,						// The function that implements the task.
-				"SD Write", 						// The text name assigned to the task - for debug only as it is not used by the kernel.
+				"SD Write", 						// The text name assigned to the task
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
 	xTaskCreate(vDataProcessWriteTask,					// The function that implements the task.
-				"Process Data", 					// The text name assigned to the task - for debug only as it is not used by the kernel.
+				"Process Data", 					// The text name assigned to the task 
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_DATAPROC, 		// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
 	xTaskCreate(vtestTask,							// The function that implements the task.
-				"Test", 							// The text name assigned to the task - for debug only as it is not used by the kernel.
+				"Test", 							// The text name assigned to the task 
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_TEST, 			// The priority assigned to the task.
@@ -144,16 +144,6 @@ void sf_main(void) {
 
 }
 
-/* This task takes in values from both the GPS and IMU tasks, then uses the functions in sf_gps.c to make them usable floats
-   Those floats are then provided to the DMA via Xilinx functions, gets the value out of it, then gives it to the sd writer
-   
-   Values from GPS received as string in "degree minute second" form
-   conversion out of this form is floatval = degree + minute/60 + second/3600
-   N positive S negative (latitude)
-   E positive W negative (longitude)
-   lat comes before long 
-   
-   IMU data comes in as an X or Y character, then the float value*/
 
 void vtestTask(void *pvParameters) {
 	for(;;) {
@@ -185,6 +175,16 @@ void vtestTask(void *pvParameters) {
 	}
 }
 
+/* This task takes in values from both the GPS and IMU tasks, then uses the functions in sf_gps.c to make them usable floats
+   Those floats are then provided to the DMA via Xilinx functions, gets the value out of it, then gives it to the sd writer
+   
+   Values from GPS received as string in "degree minute second" form
+   conversion out of this form is floatval = degree + minute/60 + second/3600
+   N positive S negative (latitude)
+   E positive W negative (longitude)
+   lat comes before long 
+*/
+   
 void vDataProcessWriteTask(void *pvParameters) {
     (void) pvParameters;
     
@@ -321,8 +321,6 @@ void vSDWriteTask(void *pvParameters) {
 
     }
 }
-    //gps_t toWrite;
-
     /* This here is test code for the dma, not likely to need it ever again
     for(;;) {
         int whole, dec;
