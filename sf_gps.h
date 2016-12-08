@@ -1,6 +1,11 @@
 #ifndef SF_GPS_H
 #define SF_GPS_H
 
+/* The longitude and Latitude for the room we are running this in, to use as a starting point */
+
+#define GPS_START_LONGITUDE -120.66176464
+#define GPS_START_LATITUDE 35.30080247 
+
 /* Struct for holding a gps position and long/lat accelerations.
  * meant to make passing all of these closely related and needed
  * values around easier */
@@ -9,6 +14,11 @@ typedef struct gps_t {
 	float latitude;
 	float acc_long;
 	float acc_lat;
+    float cur_long_p;
+    float cur_lat_p;
+    float cur_long_v;
+    float cur_lat_v;
+    float timeslice;
 } gps_t;
 
 /* Takes the raw IMU compass bearing, x-axis linear acceleration, and

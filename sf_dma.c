@@ -15,7 +15,7 @@ static XAxiDma AxiDma;
 extern XScuGic xInterruptController;
 
 /* The buffers for Transmitting and Receiving to the hardware accelerator,
- * from the perspective of the caller. Fill Tx up, start transmit (blocks),
+ * from the perspective of the caller. Fill Tx up, start transceive (blocks),
  * and then read Rx! This is actually an offset pointer from the real
  * buffer, read the comment over the offset declaration */
 float *sf_dma_TxBuffer;
@@ -114,7 +114,7 @@ int sf_init_dma(void) {
 }
 
 
-int sf_dma_transmit() {
+int sf_dma_transceive() {
 	int Status;
 
 	/* Initialize flags before start transfer */
