@@ -11,8 +11,8 @@ extern float *sf_dma_TxBuffer;
 extern float *sf_dma_RxBuffer;
 
 /* Sizes of the buffers from the caller's perspective */
-#define TX_BUFFER_LENGTH 25
-#define RX_BUFFER_LENGTH 25
+#define TX_BUFFER_LENGTH 50
+#define RX_BUFFER_LENGTH 50
 
 /* Transmit buffer to device through DMA, then receive buffer back through DMA
  * Transfers are always of size TX_BUFFER_LENGTH and RX_BUFFER_LENGTH.
