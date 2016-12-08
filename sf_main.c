@@ -26,11 +26,13 @@
 #define RECEIVE_BUFFER_SIZE 256
 #define SENTENCE_NAM_LEN 6
 #define SD_QUEUE_SIZE 16
+#define GPS_QUEUE_SIZE 64 
 
 /* Priorities at which the tasks are created. */
 #define		mainTASK_PRIORITY_SD			( tskIDLE_PRIORITY + 4 )
 #define 	mainTASK_PRIORITY_GPS			( tskIDLE_PRIORITY + 2 )
 #define		mainTASK_PRIORITY_IMU			( tskIDLE_PRIORITY + 3 )
+#define		mainTASK_PRIORITY_DATAPROC		( tskIDLE_PRIORITY + 4 )
 
 
 /* Quantum of time to fetch measurements from IMU */
@@ -39,12 +41,22 @@
 /* Time to wait between switching different modes in IMU */
 #define mainIMU_SWITCH_TIME			( 19 / portTICK_PERIOD_MS )
 
+/* Number of Items the queue can hold, setting it to 1 since we want to recieve them immediately */
+#define mainQUEUE_LENGTH 1
+
+
 /* Task Forward Declarations */
 void vGPSReceiveTask(void *pvParameters);
 void vIMUFetchTask(void *pvParameters);
 void vSDWriteTask(void *pvParameters);
 
 /* Queue for writing finished GPS points out to SD card */
+
+//Use these Queues to get the data we care about into a "data processing" task,
+//Then that data processing, which will also run the dma, has a queue out to the sd write task
+
+static QueueHandle_t GPSDataQueue = NULL;
+static QueueHandle_t IMUDataQueue = NULL;
 static QueueHandle_t SDWriteQueue = NULL;
 
 void sf_main(void) {
@@ -56,6 +68,10 @@ void sf_main(void) {
 
 	/* Initialize DMA Engine */
 	sf_init_dma();
+    
+        GPSDataQueue = xQueueCreate( mainQUEUE_LENGTH, GPS_QUEUE_SIZE);
+        IMUDataQueue = xQueueCreate( mainQUEUE_LENGTH, sizeof(float));
+
 
 	/* Inititialize SD card & its receive queue
 	 * Commented out because it was stalling program initially */
@@ -88,6 +104,13 @@ void sf_main(void) {
 				mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
 
+	xTaskCreate( vDataProcessTask,					// The function that implements the task.
+				"Process Data", 					// The text name assigned to the task - for debug only as it is not used by the kernel.
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_DATAPROC, 		// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
+
 	/* Start the tasks and timer running. */
 	vTaskStartScheduler();
 
@@ -101,6 +124,42 @@ void sf_main(void) {
 	a privileged mode (not user mode). */
 	for( ;; )
 		;
+}
+
+/* This task takes in values from both the GPS and IMU tasks, then uses the functions in sf_gps.c to make them usable floats
+   Those floats are then provided to the DMA via Xilinx functions, gets the value out of it, then gives it to the sd writer
+   
+   Values from GPS recieved as string in "degree minute second" form
+   conversion out of this form is floatval = degree + minute/60 + second/3600
+   N positive S negative (latitude)
+   E positive W negative (longitude)
+   lat comes before long 
+   
+   IMU data comes in as an X or Y character, then the float value*/
+
+void vDataProcessWriteTask(void *pvParameters) {
+    void (pvParamters);
+    
+    gps_t gps;
+    float imuXAcc;
+    float imuYAcc;
+    int heading;
+    char[GPS_QUEUE_SIZE] gpsLatLong;
+    char[GPS_QUEUE_SIZE] gpsHeading;
+    
+    
+    for ( ;; ) {
+        xQueueRecieve(GPSDataQueue, gpsLatLong, portMAX_DELAY);  
+        xQueueRecieve(GPSDataQueue, gpsHeading, portMAX_DELAY);  
+        heading = atol(gpsHeading);
+
+        xQueueRecieve(IMUDataQueue, &imuYAcc, portMAX_DELAY);  
+        xQueueRecieve(IMUDataQueue, &imuXAcc, portMAX_DELAY);  
+        
+        convert_lat_long(gpsrecv, &gps);
+        convert_acc(heading, imuXAcc, imuYAcc, &gps);
+        
+    }  
 }
 
 void vSDWriteTask(void *pvParameters) {
@@ -174,10 +233,14 @@ void vIMUFetchTask(void *pvParameters) {
 
 		data = sf_imu_get_acc_y();
 
+        xQueueSend(IMUDataQueue, (void *)data, 0U); 
+
 		snprintf(dataPrintBuff, 256, "Y: %d\r\n", (int)data);
 		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
 
 		data = sf_imu_get_acc_x();
+
+        xQueueSend(&IMUDataQueue, (void *)data, 0U); 
 
 		snprintf(dataPrintBuff, 256, "X: %d\r\n", (int)data);
 		vSerialPutString(NULL, (signed char *)dataPrintBuff, strlen(dataPrintBuff));
@@ -214,9 +277,14 @@ void vGPSReceiveTask(void *pvParameters) {
 				if (*buffPtr == 'A' || buffPtr == 'V') { /* 'A' is valid, 'V' is not */
 					buffPtr += 2;
 					char *fieldStart = buffPtr;
+                    char longlat[GPS_QUEUE_SIZE];
+                    char heading[GPS_QUEUE_SIZE];
+                    int longlatLen = 0;
+                    int headingLen = 0;
 					int fieldLength = 0;
 
 					/* Receive the Latitude field */
+                    // N positive, S negative 
 					do {
 						sf_uart_receive(buffPtr, 1);
 						fieldLength++;
@@ -225,22 +293,33 @@ void vGPSReceiveTask(void *pvParameters) {
 					/* Receive the N/S value of latitude */
 					sf_uart_receive(buffPtr, 2);
 					buffPtr += 2;
+                    longlatLen += 2;
 
 					/* Receive the longitude */
+                    // E positive, W negative 
 					do {
 						sf_uart_receive(buffPtr, 1);
 						fieldLength++;
+                        longlatLen++;
 					} while (*buffPtr++ != ',');
 
 					/* Receive the E/W value of longitude */
 					sf_uart_receive(buffPtr, 2);
 					buffPtr += 2;
+                    longlatLen += 2;
+                    
+                    //send the lat/long string (in degree minute second form) to the data processor
+                    snprintf(longlat, longlatLen, "%s", buffPtr - longlatLen);
+                    xQueueSend(&GPSDataQueue, (void *)longlat, 0U);
 
 					/* Receive speed in Knots */
 					do {
 						sf_uart_receive(buffPtr, 1);
 						fieldLength++;
+						headingLen++;
 					} while (*buffPtr++ != ',');
+                    snprintf(heading, headingLen, "%s", buffPtr - headingLen);
+                    xQueueSend(&GPSDataQueue, (void *)heading, 0U);
 
 					/* Receive true course */
 					do {
