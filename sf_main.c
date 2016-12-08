@@ -350,12 +350,25 @@ void vSDWriteTask(void *pvParameters) {
        sf_return_to_decimal_degree(&longitude, &latitude);
         
        lg_wl = longitude;
+       //make it positive for the decimal part
+       if (longitude < 0) {
+           longitude *= (-1);
+       }
        lg_dc = (longitude - lg_wl) * MILLION; 
        lt_wl = latitude;
+       if (latitude < 0) {
+           latitude *= (-1);
+       }
        lt_dc = (latitude - lt_wl) * MILLION; 
        lg_v_wl = long_v;
+       if (long_v < 0) {
+           long_v *= (-1);
+       }
        lg_v_dc = (long_v - lg_v_wl) * MILLION; 
        lt_v_wl = lat_v;
+       if (lat_v < 0) {
+           lat_v *= (-1);
+       }
        lt_v_dc = (lat_v - lt_v_wl) * MILLION; 
 
        sprintf(dataPrintBuff, "Longitude: %d.%d | Latitude: %d.%d | Longitudinal Velocity: %d.%d | Latitudinal Velocity %d.%d\n",
@@ -364,6 +377,8 @@ void vSDWriteTask(void *pvParameters) {
        sf_write_file_cur_loc(&datafile, (void *)dataPrintBuff, 256, &bytesWritten);
         
        sprintf(plotPrintBuff, "%d.%d,%d.%d\n", lg_wl, lg_dc, lt_wl, lt_dc);
+       sf_sd_write_cur_loc(&gps_plot_file, (void *)plotPrintBuff, 256, &bytesWritten); 
+
     }
 }
     //gps_t toWrite;
