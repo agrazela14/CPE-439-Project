@@ -148,19 +148,7 @@ void vDataProcessWriteTask(void *pvParameters) {
     float imuXAcc;
     float imuYAcc;
     int heading;
-<<<<<<< HEAD
-    char gpsLatLong[GPS_QUEUE_SIZE];
-    char gpsHeading[GPS_QUEUE_SIZE];
-    
-    
-    for ( ;; ) {
-        xQueueReceive(GPSDataQueue, gpsLatLong, portMAX_DELAY);
-        xQueueReceive(GPSDataQueue, gpsHeading, portMAX_DELAY);
-        heading = atol(gpsHeading);
 
-        xQueueReceive(IMUDataQueue, &imuYAcc, portMAX_DELAY);
-        xQueueReceive(IMUDataQueue, &imuXAcc, portMAX_DELAY);
-=======
     char gpsLatLong [GPS_QUEUE_SIZE];
     char gpsHeading [GPS_QUEUE_SIZE];
     
@@ -172,8 +160,7 @@ void vDataProcessWriteTask(void *pvParameters) {
 
         xQueueReceive(IMUDataQueue, &imuYAcc, portMAX_DELAY);  
         xQueueReceive(IMUDataQueue, &imuXAcc, portMAX_DELAY);  
->>>>>>> f19e9b00d18b07cde32b2be0df6050f09eb9f359
-        
+
         //convert_lat_long(gpsrecv, &gps);
         convert_acc(heading, imuXAcc, imuYAcc, &gps);
         
