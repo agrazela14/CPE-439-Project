@@ -4,6 +4,10 @@
  * Authors: Tristan Lennertz and Alex Grazela
  */
 
+// This important macro defines whether it's running the full thing (0)
+// Or just a test of the sensors (Not 0)
+#define TEST 0
+
 /* Kernel includes. */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -107,34 +111,35 @@ void sf_main(void) {
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_IMU, 				// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
+#if TEST == 0
+	xTaskCreate( vSDWriteTask,						// The function that implements the task.
+				"SD Write", 						// The text name assigned to the task
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
 
-	//xTaskCreate( vSDWriteTask,						// The function that implements the task.
-	//			"SD Write", 						// The text name assigned to the task
-	//			4096, 								// The size of the stack to allocate to the task.
-	//			NULL, 								// The parameter passed to the task - not used in this case.
-	//			mainTASK_PRIORITY_SD, 				// The priority assigned to the task.
-	//			NULL );								// The task handle is not required, so NULL is passed.
+	xTaskCreate(vDataProcessWriteTask,					// The function that implements the task.
+				"Process Data", 					// The text name assigned to the task 
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_DATAPROC, 		// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
 
-	//xTaskCreate(vDataProcessWriteTask,					// The function that implements the task.
-	//			"Process Data", 					// The text name assigned to the task 
-	//			4096, 								// The size of the stack to allocate to the task.
-	//			NULL, 								// The parameter passed to the task - not used in this case.
-	//			mainTASK_PRIORITY_DATAPROC, 		// The priority assigned to the task.
-	//			NULL );								// The task handle is not required, so NULL is passed.
-
-	//xTaskCreate(vtestTask,							// The function that implements the task.
-	//			"Test", 							// The text name assigned to the task
-	//			4096, 								// The size of the stack to allocate to the task.
-	//			NULL, 								// The parameter passed to the task - not used in this case.
-	//			mainTASK_PRIORITY_TEST, 			// The priority assigned to the task.
-	//			NULL );								// The task handle is not required, so NULL is passed.
-
+	xTaskCreate(vtestTask,							// The function that implements the task.
+				"Test", 							// The text name assigned to the task
+				4096, 								// The size of the stack to allocate to the task.
+				NULL, 								// The parameter passed to the task - not used in this case.
+				mainTASK_PRIORITY_TEST, 			// The priority assigned to the task.
+				NULL );								// The task handle is not required, so NULL is passed.
+#else 
 	xTaskCreate(calibrationTask,					// The function that implements the task.
 				"Calibration", 						// The text name assigned to the task .
 				4096, 								// The size of the stack to allocate to the task.
 				NULL, 								// The parameter passed to the task - not used in this case.
 				mainTASK_PRIORITY_CALIB, 			// The priority assigned to the task.
 				NULL );								// The task handle is not required, so NULL is passed.
+#endif 
 
 	/* Start the tasks and timer running. */
 	vTaskStartScheduler();
