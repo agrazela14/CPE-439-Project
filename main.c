@@ -88,6 +88,12 @@
  *
  */
 
+/*
+ * main.c
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
 /* Standard includes. */
 #include <stdio.h>
 #include <limits.h>

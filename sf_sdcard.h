@@ -1,3 +1,9 @@
+/*
+ * sf_sdcard.h
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
 #ifndef SF_SDCARD_H
 #define SF_SDCARD_H
 

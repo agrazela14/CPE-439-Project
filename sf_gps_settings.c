@@ -1,3 +1,10 @@
+/*
+ * sf_gps_settings.c
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
+
 #include "sf_coms.h"
 #include "sf_gps_settings.h"
 #include <stdio.h>

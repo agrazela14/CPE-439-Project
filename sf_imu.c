@@ -1,9 +1,13 @@
 /*
- * BNO055 IMU communication library, utilizing the sf_coms protocols
+ * sf_imu.c
+ *
+ * * BNO055 IMU communication library, utilizing the sf_coms protocols
  *
  * Note:	Make sure PS0 and PS1 pins are both pulled LOW to be in
  * 			I2C communication mode on the sensor. Also, verify that
  * 			the address pin is set correctly for what address you use
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
  */
 
 /* FreeRTOS includes */

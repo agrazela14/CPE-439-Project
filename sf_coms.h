@@ -1,7 +1,7 @@
 /*
  * sf_coms.h
  *
- *  Created on: Nov 2, 2016
+ * Authors: Tristan Lennertz and Alex Grazela
  */
 
 #ifndef SRC_SF_COMS_H_

@@ -1,3 +1,9 @@
+/*
+ * sf_dma.h
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
 #ifndef SF_DMA_H
 #define SF_DMA_H
 

@@ -1,3 +1,9 @@
+/*
+ * sf_gps.c
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
 #include "sf_gps.h"
 
 /* 360 is 90 degrees in (1 degree / 4 LSB), which is where we use it */
@@ -64,7 +70,6 @@ void convert_lat_long(char *stringVers, gps_t *gps) {
     
     char tempBuf[10];
 
-
     snprintf(tempBuf, LAT_DEGREE_LEN, "%s\0", stringVers);
     latDegree = atof(tempBuf);
     stringVers += LONG_DEGREE_LEN;
@@ -115,6 +120,7 @@ void sf_return_to_decimal_degree(float *longitude, float *latitude) {
     *latitude = (*latitude) / DEGREE_LAT_TO_METERS; 
 }
 
+/* so we don't have to actually calculate sin or cos. Yay! */
 const float sin_LUT[LUT_SIZE] =
 {
 		 0.000000, 0.004363, 0.008727, 0.013090, 0.017452,

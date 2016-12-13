@@ -1,8 +1,7 @@
 /*
  * sf_coms.c
  *
- *  Created on: Nov 2, 2016
- *
+ * Authors: Tristan Lennertz and Alex Grazela
  */
 
 #include "FreeRTOS.h"
@@ -99,9 +98,6 @@ void UART_Handler(void *callBackRef, u32 Event, u32 EventData) {
 			xQueueSendFromISR( xuartRxQueue, &cChar, &xHigherPriorityTaskWoken );
 			ulChannelStatusRegister = XUartPs_ReadReg( XPAR_PS7_UART_0_BASEADDR, XUARTPS_SR_OFFSET );
 		}
-
-        //xSemaphoreGiveFromISR(uartRecDone, &xHigherPriorityTaskWoken);
-        //xSemaphoreGiveFromISR(uartSemaRec, &xHigherPriorityTaskWoken);
 	}
 
 	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
@@ -188,7 +184,6 @@ void sf_init_uart() {
 
     //set UART options
     XUartPs_SetBaudRate(&xuart, 9600);
-    //Want to also put in interrupt mode later
 
     //Initialize semaphores to indicate the end of sending and receiving
     uartSemaSend = xSemaphoreCreateBinary();
@@ -211,8 +206,6 @@ void sf_init_uart() {
  * If a previous send is
  */
 void sf_iic_send(u8 *out, BaseType_t numBytes, u16 slaveAddr) {
-	//xSemaphoreTake(iicSemaSend, portMAX_DELAY); //block on previous call to finish
-
 	if(uxSemaphoreGetCount(iicSendDone)) //make sure external indicator cleared
 		xSemaphoreTake(iicSendDone, portMAX_DELAY); //shouldn't ever need to block...
 
@@ -220,17 +213,11 @@ void sf_iic_send(u8 *out, BaseType_t numBytes, u16 slaveAddr) {
 }
 
 void sf_iic_receive(u8 *in, BaseType_t numBytes, u16 slaveAddr) {
-	//xSemaphoreTake(iicSemaRec, portMAX_DELAY); //block on previous call to finish
-
 	if(uxSemaphoreGetCount(iicRecDone)) //make sure external indicator cleared
 		xSemaphoreTake(iicRecDone, portMAX_DELAY); //shouldn't ever need to block...
 
 	XIicPs_MasterRecv(&xiic, in, numBytes, slaveAddr);
 }
-
-//self note: Semaphore Macros:
-// xSemaphoreTake(xSemaphore, xBlockTime) lowers it for a specified amount of time before going anyways (I think)
-// xSemaphoreGive(xSemaphore) Ups the semaphore
 
 u32 sf_uart_send(u8 *out, BaseType_t numBytes) {
 	xSemaphoreTake(uartSemaSend, portMAX_DELAY); //block on previous call to finish
@@ -243,15 +230,6 @@ u32 sf_uart_send(u8 *out, BaseType_t numBytes) {
 }
 
 void sf_uart_receive(u8 *in, BaseType_t numBytes) {
-	//xSemaphoreTake(uartSemaRec, portMAX_DELAY); //block on previous call to finish
-
-	//if(uxSemaphoreGetCount(uartRecDone)) //make sure external indicator cleared
-	//	xSemaphoreTake(uartRecDone, 1); //shouldn't ever need to block...
-
-	//u32 received = XUartPs_Recv(&xuart, in, numBytes);
-	//(void) received;
-	//u32 test = XUartPs_GetInterruptMask	(&xuart);
-
 	int i;
 	for (i = numBytes; i > 0; i--)
 		xQueueReceive( xuartRxQueue, in + (numBytes - i), portMAX_DELAY );

@@ -1,3 +1,9 @@
+/*
+ * sf_imu.h
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
 #ifndef SF_IMU_H
 #define SF_IMU_H
 

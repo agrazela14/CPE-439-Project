@@ -1,3 +1,10 @@
+/*
+ * sf_gps_settings.h
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
+
 #ifndef SF_GPS_SETTINGS_H
 #define SF_GPS_SETTINGS_H
 

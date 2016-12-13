@@ -1,3 +1,9 @@
+/*
+ * sf_dma.c
+ *
+ * Authors: Tristan Lennertz and Alex Grazela
+ */
+
 #include "xaxidma.h"
 #include "xparameters.h"
 #include "xil_exception.h"
