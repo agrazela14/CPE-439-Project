@@ -522,7 +522,7 @@ void vGPSReceiveTask(void *pvParameters) {
                     
                     //send the lat/long string (in degree minute second form) to the data processor
                     snprintf(longlat, longlatLen, "%s", buffPtr - longlatLen);
-                    xQueueSend(GPSDataQueue, (void *)longlat, 0U);
+                    //xQueueSend(GPSDataQueue, (void *)longlat, 0U);
 
                     /* Receive speed in Knots */
                     do {
@@ -531,7 +531,7 @@ void vGPSReceiveTask(void *pvParameters) {
                         headingLen++;
                     } while (*buffPtr++ != ',');
                     snprintf(heading, headingLen, "%s", buffPtr - headingLen);
-                    xQueueSend(GPSDataQueue, (void *)heading, 0U);
+                    //xQueueSend(GPSDataQueue, (void *)heading, 0U);
 
                     /* Receive true course */
                     do {
